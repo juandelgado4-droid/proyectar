@@ -41,7 +41,7 @@ let lastLyricScrollTime = 0;
 let lastMediaSnapshot = null;
 let currentSongMeta = { artist: '', title: '', cleanArtist: '', cleanTitle: '' };
 
-const SYNC_CORRECTION_THRESHOLD_MS = 100;
+const SYNC_CORRECTION_THRESHOLD_MS = 400;
 const MEDIA_EVENT_LATENCY_CAP_MS = 600;
 const MANUAL_LYRIC_OFFSET_STEP_MS = 100;
 const MANUAL_LYRIC_OFFSET_LIMIT_MS = 5000;
@@ -99,7 +99,7 @@ if (window.electronAPI) {
 // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
 let lyricsDB = null;
 const DB_NAME = 'LyricsCache';
-const DB_VERSION = 3; // Clears older cached lyrics after sync/source fixes.
+const DB_VERSION = 4; // Clears older cached lyrics after sync/source fixes.
 const MAX_CACHE_AGE_MS = 180 * 24 * 60 * 60 * 1000;
 const DB_STORE = 'lyrics';
 
@@ -452,13 +452,21 @@ function parseLRC(lrc) {
     withInterludes.push({ timeMs: 0, text: '...', isInterlude: true });
   }
 
+  const DOTS_LEAD_MS = 2500; // los "..." aparecen este tiempo ANTES de que vuelva la letra
+  const MIN_LINE_DWELL_MS = 2500; // la linea cantada dura al menos esto antes de los "..."
+
   for (let i = 0; i < parsed.length; i++) {
     if (i > 0) {
       const gap = parsed[i].timeMs - parsed[i - 1].timeMs;
       if (gap >= GAP_THRESHOLD) {
-        // Place the interlude marker 1 second after the previous line ended
+        // Los puntos aparecen cerca del FINAL del silencio, no al principio.
+        // Asi la ultima linea cantada se queda visible casi todo el hueco.
+        const dotsAt = Math.max(
+          parsed[i - 1].timeMs + MIN_LINE_DWELL_MS,
+          parsed[i].timeMs - DOTS_LEAD_MS
+        );
         withInterludes.push({
-          timeMs: parsed[i - 1].timeMs + 1000,
+          timeMs: dotsAt,
           text: '...',
           isInterlude: true
         });
@@ -564,6 +572,13 @@ async function handleMediaUpdate(data) {
   if (data.positionMs != null) {
     let exactPosMs = Number(data.positionMs);
     if (Number.isFinite(exactPosMs)) {
+      const eventTimestampMs = Number(data.timestamp);
+      if (isPlaying && Number.isFinite(eventTimestampMs)) {
+        const transitMs = Date.now() - eventTimestampMs;
+        if (transitMs > 0) {
+          exactPosMs += Math.min(transitMs, MEDIA_EVENT_LATENCY_CAP_MS);
+        }
+      }
       exactPosMs = Math.max(0, exactPosMs);
 
       // Si la cancion acaba de empezar, si estaba en pausa y se dio Play,
@@ -575,12 +590,17 @@ async function handleMediaUpdate(data) {
       } else {
         const elapsed = performance.now() - lastUpdateLocalTime;
         const predictedPosMs = currentPosMs + elapsed;
+        const diff = exactPosMs - predictedPosMs;
 
-        // Si la diferencia es grande (seek o drift del reproductor), resincronizamos.
-        if (Math.abs(exactPosMs - predictedPosMs) > SYNC_CORRECTION_THRESHOLD_MS) {
+        // Diferencia grande = seek real, pausa/play o cambio de cancion -> resync duro.
+        if (Math.abs(diff) > SYNC_CORRECTION_THRESHOLD_MS) {
           currentPosMs = exactPosMs;
           lastUpdateLocalTime = performance.now();
           if (syncedLines) updateSyncPosition(currentPosMs, true);
+        } else if (Math.abs(diff) > 40) {
+          // Drift pequeno (jitter del SMTC) -> acercarse gradualmente, sin saltos.
+          currentPosMs = predictedPosMs + diff * 0.2;
+          lastUpdateLocalTime = performance.now();
         }
       }
     }
@@ -666,12 +686,19 @@ async function handleMediaUpdate(data) {
 // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
 // SYNCED LYRICS � scroll & highlight
 // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+const LYRIC_LEAD_MS = 200; // activa cada linea un pelo antes de su timestamp
+
 function updateSyncPosition(posMs, force = false) {
   if (!syncedLines || syncedLines.length === 0) return;
 
-  const newIdx = findActiveLineIndex(getLyricPositionMs(posMs));
+  let newIdx = findActiveLineIndex(getLyricPositionMs(posMs) + LYRIC_LEAD_MS);
 
   if (!force && newIdx === activeLineIdx) return;
+
+  // Avance de a UNA linea: si el reloj se adelanto varias, alcanzamos
+  // fluido frame a frame en vez de brincar varias lineas de golpe.
+  if (!force && newIdx > activeLineIdx + 1) newIdx = activeLineIdx + 1;
+
   activeLineIdx = newIdx;
 
   if (lyricLineEls.length === 0) {
@@ -688,6 +715,8 @@ function updateSyncPosition(posMs, force = false) {
   scrollActiveLineIntoView();
 }
 
+const LYRIC_BACK_HYSTERESIS_MS = 300; // margen para bajar de linea, evita temblor en el borde
+
 function findActiveLineIndex(posMs) {
   let low = 0;
   let high = syncedLines.length - 1;
@@ -703,6 +732,14 @@ function findActiveLineIndex(posMs) {
     }
   }
 
+  // Histeresis: solo retrocedemos de linea si el reloj cayo CLARAMENTE por
+  // debajo del timestamp de la linea actual. Mata el rebote i <-> i+1.
+  if (idx === activeLineIdx - 1 && activeLineIdx >= 0 && syncedLines[activeLineIdx]) {
+    if (posMs > syncedLines[activeLineIdx].timeMs - LYRIC_BACK_HYSTERESIS_MS) {
+      return activeLineIdx;
+    }
+  }
+
   return idx;
 }
 
@@ -714,8 +751,9 @@ function scrollActiveLineIntoView() {
     0,
     el.offsetTop - (lyricsContainer.clientHeight / 2) + (el.offsetHeight / 2)
   );
+  if (Math.abs(lyricsContainer.scrollTop - targetTop) < 4) return;
   const now = performance.now();
-  const behavior = now - lastLyricScrollTime < 350 ? 'auto' : 'smooth';
+  const behavior = now - lastLyricScrollTime < 400 ? 'auto' : 'smooth';
   lastLyricScrollTime = now;
 
   lyricsContainer.scrollTo({ top: targetTop, behavior });

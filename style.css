@@ -153,6 +153,7 @@ body.is-fullscreen .titlebar {
   cursor: default;
   transform-origin: center left;
   backface-visibility: hidden;
+  will-change: transform, opacity, color;
 }
 
 /* Active (current) line ── bright, glowing */
