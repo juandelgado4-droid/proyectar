@@ -117,7 +117,7 @@ async function getCached(a, t) {
       const req = store.get(cacheKey(a, t));
       req.onsuccess = () => {
         const res = req.result;
-        if (res && !res.plain && !res.synced) {
+        if (res && !res.plain && !res.synced && !res.manualPlain && !res.manualSynced) {
           // If cached as "not found", but it's more than 1 hour old, ignore cache to retry searching
           const ageHours = (Date.now() - (res.ts || 0)) / (1000 * 60 * 60);
           if (ageHours > 1) return resolve(null);
@@ -129,12 +129,19 @@ async function getCached(a, t) {
   } catch { return null; }
 }
 
-async function setCache(a, t, plain, synced) {
+async function setCache(a, t, plain, synced, extra = {}) {
   try {
     const db = await openLyricsDB();
     const tx = db.transaction(DB_STORE, 'readwrite');
     const store = tx.objectStore(DB_STORE);
-    store.put({ id: cacheKey(a, t), plain, synced, ts: Date.now() });
+    store.put({
+      id: cacheKey(a, t),
+      plain,
+      synced,
+      manualPlain: extra.manualPlain || null,
+      manualSynced: extra.manualSynced || null,
+      ts: Date.now()
+    });
   } catch {}
 }
 
@@ -163,7 +170,32 @@ async function migrateLocalStorageCache() {
 }
 
 // Init DB and migrate
-openLyricsDB().then(() => migrateLocalStorageCache());
+const MAX_CACHE_AGE_MS = 180 * 24 * 60 * 60 * 1000;
+
+async function pruneLyricsCache() {
+  try {
+    const db = await openLyricsDB();
+    const cutoff = Date.now() - MAX_CACHE_AGE_MS;
+    return new Promise((resolve) => {
+      const tx = db.transaction(DB_STORE, 'readwrite');
+      const store = tx.objectStore(DB_STORE);
+      const req = store.openCursor();
+      req.onsuccess = (e) => {
+        const cursor = e.target.result;
+        if (!cursor) return;
+        if ((cursor.value.ts || 0) < cutoff) cursor.delete();
+        cursor.continue();
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  } catch {}
+}
+
+openLyricsDB().then(() => {
+  migrateLocalStorageCache();
+  pruneLyricsCache();
+});
 
 // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
 // WINDOW CONTROLS
@@ -507,14 +539,26 @@ async function handleMediaUpdate(data) {
 
     // Check cache (IndexedDB � instant, works offline)
     const cached = await getCached(ca, ct);
-    if (cached && hasSyncedTimestamps(cached.synced)) {
-      syncedLines = parseLRC(cached.synced);
-      displaySyncedLyrics(rawTitle, syncedLines);
-      return;
-    }
-    if (cached && !cached.plain && !cached.synced) {
-      displayNoLyrics(rawTitle);
-      return;
+    if (cached) {
+      // Priorizar letras manuales
+      if (cached.manualSynced && hasSyncedTimestamps(cached.manualSynced)) {
+        syncedLines = parseLRC(cached.manualSynced);
+        displaySyncedLyrics(rawTitle, syncedLines);
+        return;
+      }
+      if (cached.manualPlain) {
+        displayPlainLyrics(rawTitle, cached.manualPlain);
+        return;
+      }
+      if (hasSyncedTimestamps(cached.synced)) {
+        syncedLines = parseLRC(cached.synced);
+        displaySyncedLyrics(rawTitle, syncedLines);
+        return;
+      }
+      if (!cached.plain && !cached.synced && !cached.manualPlain && !cached.manualSynced) {
+        displayNoLyrics(rawTitle);
+        return;
+      }
     }
 
     // Show dots while fetching silently
