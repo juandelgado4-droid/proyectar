@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proyector de Letras - Cafecito o Miedo</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="assets/fonts/fonts.css">
+</head>
+<body>
+  <!-- Custom Title Bar -->
+  <div class="titlebar" id="titlebar">
+    <span class="titlebar-title">Cafecito o Miedo - Proyector de Letras</span>
+    <div class="titlebar-btns">
+      <button class="tb-btn" id="tb-min">─</button>
+      <button class="tb-btn" id="tb-max">□</button>
+      <button class="tb-btn tb-close" id="tb-close">✕</button>
+    </div>
+  </div>
+
+  <!-- Background Canvas -->
+  <canvas id="bg-canvas"></canvas>
+  <canvas id="webgl-canvas"></canvas>
+
+  <script src="assets/vendor/three.min.js"></script>
+
+  <!-- Watermark Logo -->
+  <img src="logo.png" alt="Cafecito o Miedo" id="watermark">
+
+  <!-- Now Playing -->
+  <div class="now-playing" id="now-playing">
+    <div class="np-status" id="np-status">⏸ En pausa</div>
+    <div class="np-title" id="np-title">Esperando canción...</div>
+    <div class="np-artist" id="np-artist"></div>
+    <div class="np-album" id="np-album"></div>
+  </div>
+
+  <!-- Lyrics -->
+  <div class="lyrics-container" id="lyrics-container">
+    <div class="lyrics-content" id="lyrics-content">
+      <p class="welcome-msg">🎵 Reproduce una canción en Apple Music, Spotify o cualquier app<br>La letra aparecerá automáticamente</p>
+    </div>
+  </div>
+
+  <!-- Video Player Overlay -->
+  <div class="video-overlay" id="video-overlay">
+    <video id="video-player" class="video-player"></video>
+    <div class="video-controls" id="video-controls">
+      <button class="video-ctrl-btn" id="vid-prev" title="Video Anterior">⏮</button>
+      <button class="video-ctrl-btn video-close-btn" id="vid-close" title="Cerrar Video">✕</button>
+      <button class="video-ctrl-btn" id="vid-next" title="Siguiente Video">⏭</button>
+    </div>
+    <div class="video-title" id="video-title"></div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls-bar" id="controls-bar">
+    <div class="ctrl-group">
+      <label>Fondo:</label>
+      <select id="bg-selector">
+        <option value="universo">🌌 Universo</option>
+        <option value="flores">🌸 Flores</option>
+        <option value="fuego">🔥 Fuego</option>
+        <option value="aurora">✨ Aurora</option>
+        <option value="oceano">🌊 Océano</option>
+        <option value="galaxia">☄️ Galaxia</option>
+        <option value="vapor">🌅 Vapor Ámbar</option>
+        <option value="magia">🍄 Bosque Mágico</option>
+        <option value="lluvia">🌧️ Lluvia Relajante</option>
+        <option value="nebulosa">☁️ Nebulosa</option>
+        <option value="fotos">🖼️ Mis Fotos</option>
+      </select>
+    </div>
+    <div class="ctrl-group" id="folder-group" style="display: none;">
+      <label>Carpeta:</label>
+      <select id="folder-selector">
+        <option value="">Carpeta Principal</option>
+      </select>
+      <button class="ctrl-btn" id="btn-open-folder" title="Abrir carpeta de archivos en Windows" style="font-size: 1.2rem;">📂</button>
+    </div>
+    <div class="ctrl-group">
+      <label>Texto:</label>
+      <input type="range" id="text-size" min="1" max="10" value="5">
+    </div>
+    <div class="ctrl-group">
+      <label>Brillo:</label>
+      <input type="range" id="brightness" min="10" max="200" value="100" style="width: 60px;">
+    </div>
+    <div class="ctrl-group">
+      <label>Logo:</label>
+      <input type="range" id="logo-opacity" min="0" max="100" value="40" style="width: 60px;">
+    </div>
+    <div class="ctrl-group">
+      <label style="cursor:pointer;"><input type="checkbox" id="toggle-lyrics" style="margin-right:4px;">Ocultar Letra</label>
+    </div>
+    <div class="ctrl-group sync-controls">
+      <label>Sync:</label>
+      <button class="ctrl-btn sync-btn" id="sync-minus" title="Atrasar letra 100 ms">-</button>
+      <span class="sync-offset" id="sync-offset">0 ms</span>
+      <button class="ctrl-btn sync-btn" id="sync-plus" title="Adelantar letra 100 ms">+</button>
+      <button class="ctrl-btn sync-btn" id="sync-reset" title="Resetear desfase">0</button>
+    </div>
+    <div class="ctrl-group media-controls">
+      <button class="ctrl-btn media-btn" id="media-prev" title="Anterior">⏮</button>
+      <button class="ctrl-btn media-btn play-btn" id="media-play" title="Play/Pausa">⏸</button>
+      <button class="ctrl-btn media-btn" id="media-next" title="Siguiente">⏭</button>
+    </div>
+
+    <div class="ctrl-group media-controls" style="border-left: 1px solid rgba(255,255,255,0.1); padding-left: 10px;">
+      <button class="ctrl-btn" id="vid-play-btn" title="Reproducir Videos" style="font-size:1rem;">🎬</button>
+    </div>
+    <button class="ctrl-btn" id="fullscreen-btn" title="Pantalla Completa" style="margin-left:10px;">🔲</button>
+    <button class="ctrl-btn" id="manual-lyrics-btn" title="Editar letra manual" style="margin-left:10px;">✎</button>
+    <button class="ctrl-btn" id="hide-btn" title="Ocultar controles (doble clic para restaurar)" style="margin-left:10px;">🔽</button>
+  </div>
+
+  <div class="lyrics-modal" id="manual-lyrics-modal" aria-hidden="true">
+    <div class="lyrics-modal-card">
+      <div class="lyrics-modal-header">
+        <div>
+          <div class="lyrics-modal-title">Editar letra</div>
+          <div class="lyrics-modal-subtitle">Pega texto plano o formato LRC para esta canción.</div>
+        </div>
+        <button class="lyrics-modal-close" id="manual-lyrics-close" type="button">✕</button>
+      </div>
+      <textarea id="manual-lyrics-input" class="lyrics-modal-input" placeholder="[00:12.34] Línea de letra"></textarea>
+      <div class="lyrics-modal-actions">
+        <button class="lyrics-modal-btn ghost" id="manual-lyrics-clear" type="button">Limpiar</button>
+        <button class="lyrics-modal-btn" id="manual-lyrics-save" type="button">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
