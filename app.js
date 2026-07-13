@@ -985,8 +985,8 @@ function switchBg(name) {
       }
     } else {
       ytContainer.style.display = 'none';
-      const iframe = $('yt-bg-iframe');
-      if (iframe) iframe.src = '';
+      const webview = $('yt-bg-webview');
+      if (webview) webview.src = 'about:blank';
     }
   }
 
@@ -1014,13 +1014,13 @@ async function yt_loadVideo(artist, title) {
   if (yt_currentSearch === searchKey) return; // Ya estamos mostrando/buscando este
   yt_currentSearch = searchKey;
 
-  const iframe = $('yt-bg-iframe');
+  const webview = $('yt-bg-webview');
   const loading = $('yt-bg-loading');
-  if (!iframe || !loading) return;
+  if (!webview || !loading) return;
 
   // Reset y mostrar loading
-  iframe.classList.remove('loaded');
-  iframe.src = '';
+  webview.classList.remove('loaded');
+  webview.src = 'about:blank';
   loading.classList.remove('hidden');
 
   try {
@@ -1029,16 +1029,30 @@ async function yt_loadVideo(artist, title) {
     if (yt_currentSearch !== searchKey) return;
 
     if (videoId) {
-      // autoplay=1 (auto play), mute=1 (no audio), controls=0 (hide UI), disablekb=1 (no keyboard), fs=0 (no fullscreen button)
-      // modestbranding=1 (minimal youtube logo), iv_load_policy=3 (no annotations), rel=0 (no related videos at end)
-      // loop=1 requires playlist=VIDEO_ID to loop properly
-      iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=0&disablekb=1&fs=0&modestbranding=1&iv_load_policy=3&rel=0&loop=1&playlist=${videoId}`;
+      webview.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&disablekb=1&fs=0&modestbranding=1&iv_load_policy=3&rel=0&loop=1&playlist=${videoId}`;
       
-      // Esperar un poco a que cargue el iframe antes de hacer fade in
+      webview.addEventListener('dom-ready', () => {
+        // Hides cursor and ensures video fills webview properly
+        webview.executeJavaScript(`
+          try {
+            document.body.style.cursor = 'none';
+            document.body.style.overflow = 'hidden';
+            
+            // Force cover in case youtube leaves borders
+            const video = document.querySelector('video');
+            if(video) {
+               video.style.objectFit = 'cover';
+               video.style.width = '100vw';
+               video.style.height = '100vh';
+            }
+          } catch(e) {}
+        `);
+      });
+
       setTimeout(() => {
         if (yt_currentSearch === searchKey) {
           loading.classList.add('hidden');
-          iframe.classList.add('loaded');
+          webview.classList.add('loaded');
         }
       }, 1500);
     } else {

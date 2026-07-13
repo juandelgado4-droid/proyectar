@@ -90,7 +90,8 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webviewTag: true
     },
     icon: path.join(__dirname, 'logo.png')
   });
@@ -208,7 +209,8 @@ function createProyectorWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webviewTag: true
     },
     icon: path.join(__dirname, 'logo.png')
   });

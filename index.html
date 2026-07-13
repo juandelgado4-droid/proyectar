@@ -22,9 +22,8 @@
   <canvas id="bg-canvas"></canvas>
   <canvas id="webgl-canvas"></canvas>
 
-  <!-- YouTube Music Video Background -->
   <div id="yt-bg-container" style="display:none;">
-    <iframe id="yt-bg-iframe" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    <webview id="yt-bg-webview" httpreferrer="https://www.youtube.com/" useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" allowpopups></webview>
     <div class="yt-bg-overlay"></div>
     <div class="yt-bg-loading" id="yt-bg-loading">
       <div class="yt-bg-spinner"></div>
