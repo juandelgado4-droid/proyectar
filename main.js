@@ -356,7 +356,27 @@ ipcMain.on('open-media-folder', () => {
   if (userDocs) shell.openPath(userDocs);
 });
 
-
+// ── YouTube Music Video Search ──
+ipcMain.handle('search-youtube', async (event, artist, title) => {
+  try {
+    const query = `${artist} ${title} official music video`;
+    const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9'
+      }
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    // YouTube includes video data as JSON in the HTML — extract first videoId
+    const match = html.match(/"videoId"\s*:\s*"([a-zA-Z0-9_-]{11})"/);
+    return match ? match[1] : null;
+  } catch (e) {
+    logError('YouTube search error', e);
+    return null;
+  }
+});
 
 
 function lyricSlug(str) {

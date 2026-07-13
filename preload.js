@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   mediaPrev: () => ipcRenderer.send('media-prev'),
   openMediaFolder: () => ipcRenderer.send('open-media-folder'),
   scrapeLyrics: (artist, title) => ipcRenderer.invoke('scrape-lyrics', artist, title),
+  searchYoutube: (artist, title) => ipcRenderer.invoke('search-youtube', artist, title),
   openProyector: () => ipcRenderer.send('open-proyector'),
   sendFakeMediaUpdate: (data) => ipcRenderer.send('fake-media-update', data),
   sendProyectorCmd: (data) => ipcRenderer.send('proyector-cmd', data)

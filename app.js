@@ -618,8 +618,8 @@ async function handleMediaUpdate(data) {
     syncedLines = null;
     activeLineIdx = -1;
 
-    // Normal behavior: Change to a random background ONLY if we are not currently playing photos
-    if (currentBg !== 'fotos') {
+    // Normal behavior: Change to a random background ONLY if we are not currently playing photos or videomusical
+    if (currentBg !== 'fotos' && currentBg !== 'videomusical') {
       const bgOptions = ['universo', 'flores', 'fuego', 'aurora', 'oceano', 'galaxia', 'vapor', 'magia', 'lluvia', 'nebulosa'];
       let nextBg = currentBg;
       while(nextBg === currentBg && bgOptions.length > 1) {
@@ -631,6 +631,11 @@ async function handleMediaUpdate(data) {
 
     const ca = cleanArtist(rawArtist);
     const ct = cleanTitle(rawTitle);
+
+    // If we are currently on videomusical, fetch the video
+    if (currentBg === 'videomusical') {
+      yt_loadVideo(ca, ct);
+    }
 
     // Check cache (IndexedDB � instant, works offline)
     const cached = await getCached(ca, ct);
@@ -970,11 +975,26 @@ function switchBg(name) {
   }
   
   const webgl = $('webgl-canvas');
+  const ytContainer = $('yt-bg-container');
+  
+  if (ytContainer) {
+    if (name === 'videomusical') {
+      ytContainer.style.display = 'block';
+      if (currentSongMeta && currentSongMeta.cleanArtist && currentSongMeta.cleanTitle) {
+        yt_loadVideo(currentSongMeta.cleanArtist, currentSongMeta.cleanTitle);
+      }
+    } else {
+      ytContainer.style.display = 'none';
+      const iframe = $('yt-bg-iframe');
+      if (iframe) iframe.src = '';
+    }
+  }
+
   if (name === 'universo') {
     bgCanvas.style.display = 'none';
     webgl.style.display = 'block';
     loopUniverso3D();
-  } else {
+  } else if (name !== 'videomusical') {
     bgCanvas.style.display = 'block';
     webgl.style.display = 'none';
     const bgs = {
@@ -982,6 +1002,52 @@ function switchBg(name) {
       vapor: loopVapor, magia: loopMagia, lluvia: loopLluvia, nebulosa: loopNebulosa, fotos: loopFotos
     };
     if (bgs[name]) bgs[name]();
+  }
+}
+
+//    YOUTUBE VIDEO BACKGROUND   
+let yt_currentSearch = '';
+
+async function yt_loadVideo(artist, title) {
+  if (!window.electronAPI || !window.electronAPI.searchYoutube) return;
+  const searchKey = `${artist}|${title}`;
+  if (yt_currentSearch === searchKey) return; // Ya estamos mostrando/buscando este
+  yt_currentSearch = searchKey;
+
+  const iframe = $('yt-bg-iframe');
+  const loading = $('yt-bg-loading');
+  if (!iframe || !loading) return;
+
+  // Reset y mostrar loading
+  iframe.classList.remove('loaded');
+  iframe.src = '';
+  loading.classList.remove('hidden');
+
+  try {
+    const videoId = await window.electronAPI.searchYoutube(artist, title);
+    // Verificar si mientras buscábamos, cambió la canción
+    if (yt_currentSearch !== searchKey) return;
+
+    if (videoId) {
+      // autoplay=1 (auto play), mute=1 (no audio), controls=0 (hide UI), disablekb=1 (no keyboard), fs=0 (no fullscreen button)
+      // modestbranding=1 (minimal youtube logo), iv_load_policy=3 (no annotations), rel=0 (no related videos at end)
+      // loop=1 requires playlist=VIDEO_ID to loop properly
+      iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&controls=0&disablekb=1&fs=0&modestbranding=1&iv_load_policy=3&rel=0&loop=1&playlist=${videoId}`;
+      
+      // Esperar un poco a que cargue el iframe antes de hacer fade in
+      setTimeout(() => {
+        if (yt_currentSearch === searchKey) {
+          loading.classList.add('hidden');
+          iframe.classList.add('loaded');
+        }
+      }, 1500);
+    } else {
+      loading.querySelector('span').textContent = 'Video no encontrado';
+    }
+  } catch (e) {
+    if (yt_currentSearch === searchKey) {
+      loading.querySelector('span').textContent = 'Error al buscar video';
+    }
   }
 }
 

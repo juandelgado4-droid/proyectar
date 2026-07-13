@@ -22,6 +22,16 @@
   <canvas id="bg-canvas"></canvas>
   <canvas id="webgl-canvas"></canvas>
 
+  <!-- YouTube Music Video Background -->
+  <div id="yt-bg-container" style="display:none;">
+    <iframe id="yt-bg-iframe" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    <div class="yt-bg-overlay"></div>
+    <div class="yt-bg-loading" id="yt-bg-loading">
+      <div class="yt-bg-spinner"></div>
+      <span>Buscando video musical...</span>
+    </div>
+  </div>
+
   <script src="assets/vendor/three.min.js"></script>
 
   <!-- Watermark Logo -->
@@ -69,6 +79,7 @@
         <option value="lluvia">🌧️ Lluvia Relajante</option>
         <option value="nebulosa">☁️ Nebulosa</option>
         <option value="fotos">🖼️ Mis Fotos</option>
+        <option value="videomusical">🎥 Video Musical</option>
       </select>
     </div>
     <div class="ctrl-group" id="folder-group" style="display: none;">
