@@ -1029,23 +1029,16 @@ async function yt_loadVideo(artist, title) {
     if (yt_currentSearch !== searchKey) return;
 
     if (videoId) {
-      webview.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&disablekb=1&fs=0&modestbranding=1&iv_load_policy=3&rel=0&loop=1&playlist=${videoId}`;
+      webview.src = `https://www.youtube.com/watch?v=${videoId}&autoplay=1`;
       
-      webview.addEventListener('dom-ready', () => {
-        // Hides cursor and ensures video fills webview properly
-        webview.executeJavaScript(`
-          try {
-            document.body.style.cursor = 'none';
-            document.body.style.overflow = 'hidden';
-            
-            // Force cover in case youtube leaves borders
-            const video = document.querySelector('video');
-            if(video) {
-               video.style.objectFit = 'cover';
-               video.style.width = '100vw';
-               video.style.height = '100vh';
-            }
-          } catch(e) {}
+      webview.addEventListener('did-finish-load', () => {
+        webview.insertCSS(`
+          #secondary, #below, #masthead-container,
+          ytd-comments, #related, #chat { display: none !important; }
+          #primary { max-width: 100vw !important; }
+          video { width: 100vw !important; height: 100vh !important; object-fit: contain; }
+          body { cursor: none !important; }
+          ::-webkit-scrollbar { display: none; }
         `);
       });
 
