@@ -104,10 +104,9 @@
       <label style="cursor:pointer;"><input type="checkbox" id="toggle-lyrics" style="margin-right:4px;">Ocultar Letra</label>
     </div>
     <div class="ctrl-group sync-controls">
-      <label>Sync:</label>
-      <button class="ctrl-btn sync-btn" id="sync-minus" title="Atrasar letra 100 ms">-</button>
+      <label>Sync <span id="sync-source-indicator" class="sync-source" title="Fuente actual"></span>:</label>
+      <input type="range" id="sync-slider" min="-5000" max="5000" step="50" value="0" style="width: 80px;" title="Ajuste de sincronización">
       <span class="sync-offset" id="sync-offset">0 ms</span>
-      <button class="ctrl-btn sync-btn" id="sync-plus" title="Adelantar letra 100 ms">+</button>
       <button class="ctrl-btn sync-btn" id="sync-reset" title="Resetear desfase">0</button>
     </div>
     <div class="ctrl-group media-controls">
@@ -141,6 +140,7 @@
     </div>
   </div>
 
+  <script src="sync-engine.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

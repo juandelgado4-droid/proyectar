@@ -276,7 +276,7 @@ async function saveManualLyrics() {
   }
   const raw = manualLyricsInput ? manualLyricsInput.value : '';
   const text = String(raw || '').replace(/\r/g, '').trim();
-  const manualSynced = text && hasSyncedTimestamps(text) ? text : null;
+  const manualSynced = text && LrcParser.hasSyncedTimestamps(text) ? text : null;
   const manualPlain = manualSynced ? null : (text || null);
   await setCache(currentSongMeta.cleanArtist, currentSongMeta.cleanTitle, null, null, {
     manualPlain,
@@ -284,8 +284,7 @@ async function saveManualLyrics() {
   });
   closeManualLyricsModal();
   if (manualSynced) {
-    syncedLines = parseLRC(manualSynced);
-    displaySyncedLyrics(currentSongMeta.title, syncedLines);
+    displayLyricsData(currentSongMeta.title, LrcParser.parse(manualSynced));
   } else if (manualPlain) {
     displayPlainLyrics(currentSongMeta.title, manualPlain);
   } else if (lastMediaSnapshot) {
@@ -361,136 +360,38 @@ document.addEventListener('keydown', (e) => {
       electronAPI.mediaPlayPause();
     } else if (e.code === 'BracketLeft') {
       e.preventDefault();
-      setManualLyricOffsetMs(manualLyricOffsetMs - MANUAL_LYRIC_OFFSET_STEP_MS);
+      syncEngine.offset.setOffset(syncEngine.offset.getOffset() - MANUAL_LYRIC_OFFSET_STEP_MS);
+      updateSyncUI();
+      syncEngine.forceUpdate();
     } else if (e.code === 'BracketRight') {
       e.preventDefault();
-      setManualLyricOffsetMs(manualLyricOffsetMs + MANUAL_LYRIC_OFFSET_STEP_MS);
+      syncEngine.offset.setOffset(syncEngine.offset.getOffset() + MANUAL_LYRIC_OFFSET_STEP_MS);
+      updateSyncUI();
+      syncEngine.forceUpdate();
     }
   }
 });
 
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
-// CLEAN ARTIST/TITLE NAMES
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
-function cleanArtist(raw) {
-  if (!raw) return '';
-  let c = raw.split(' - ')[0].trim();
-  c = c.replace(/\s*(feat\.?|ft\.?|featuring|&|,)\s+.*/i, '').trim();
-  return c;
-}
+// ─────────────────────────────────────────────────────────────────
+// SYNC ENGINE INITIALIZATION
+// ─────────────────────────────────────────────────────────────────
+const syncEngine = new SyncEngine({
+  lyricsContent,
+  lyricsContainer
+});
 
-function cleanTitle(raw) {
-  if (!raw) return '';
-  let c = raw.replace(/\s*[\(\[].*?[\)\]]\s*/g, '').trim();
-  return c;
-}
+// Update slider when offset changes (from storage or syncEngine)
+const syncSlider = $('sync-slider');
+const syncOffsetLabel = $('sync-offset');
+const syncSourceIndicator = $('sync-source-indicator');
 
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
-// PARSE SYNCED LYRICS (LRC format)
-// [00:12.34] Line text -> {timeMs: 12340, text: "Line text"}
-// ==========================================================
-function parseLRC(lrc) {
-  if (!lrc) return null;
-  const lines = lrc.split('\n');
-  const parsed = [];
-  const offsetMatch = String(lrc).match(/^\s*\[offset:\s*([+-]?\d+)\s*\]/im);
-  const lrcOffsetMs = offsetMatch ? parseInt(offsetMatch[1], 10) : 0;
-  
-  // Regex that matches one or more timestamps.
-  const timeTagRegex = /\[\d{1,3}:\d{2}(?:[\.,]\d{1,3})?\]/g;
-  const wordTimeTagRegex = /<\d{1,3}:\d{2}(?:[\.,]\d{1,3})?>/g;
-
-  for (const line of lines) {
-    let match;
-    let tags = [];
-    
-    // Extract all time tags in the line
-    let text = line;
-    while ((match = timeTagRegex.exec(line)) !== null) {
-      tags.push(match[0]);
-    }
-    
-    if (tags.length > 0) {
-      // Remove all time tags to get just the text
-      text = line.replace(timeTagRegex, '').replace(wordTimeTagRegex, '').trim();
-      timeTagRegex.lastIndex = 0;
-      const afterLeadingTags = line.trim().replace(/^(?:\[\d{1,3}:\d{2}(?:[\.,]\d{1,3})?\]\s*)+/, '');
-      const tagsToUse = timeTagRegex.test(afterLeadingTags) ? tags.slice(0, 1) : tags;
-      timeTagRegex.lastIndex = 0;
-      
-      for (const tag of tagsToUse) {
-        const timeMatch = tag.match(/\[(\d{1,3}):(\d{2})(?:[\.,](\d{1,3}))?\]/);
-        if (timeMatch) {
-          const mins = parseInt(timeMatch[1], 10);
-          const secs = parseInt(timeMatch[2], 10);
-          let ms = 0;
-          if (timeMatch[3]) {
-            ms = parseInt(timeMatch[3], 10);
-            if (timeMatch[3].length === 1) ms *= 100;
-            else if (timeMatch[3].length === 2) ms *= 10;
-          }
-          const timeMs = Math.max(0, mins * 60000 + secs * 1000 + ms + lrcOffsetMs);
-          if (text) {
-             parsed.push({ timeMs, text });
-          }
-        }
-      }
-    }
+function updateSyncUI() {
+  if (syncSlider) syncSlider.value = syncEngine.offset.getOffset();
+  if (syncOffsetLabel) syncOffsetLabel.textContent = formatOffset(syncEngine.offset.getOffset());
+  if (syncSourceIndicator) {
+    const srcName = syncEngine.offset.getSourceName();
+    syncSourceIndicator.textContent = srcName ? `(${srcName})` : '';
   }
-
-  if (parsed.length === 0) return null;
-
-  // Crucial: Sort by timeMs to prevent jumping if tags are out of order
-  parsed.sort((a, b) => a.timeMs - b.timeMs);
-
-  // Insert "..." interlude markers for instrumental gaps >= 5 seconds
-  const GAP_THRESHOLD = 5000;
-  const withInterludes = [];
-
-  // Intro interlude: if first line starts late
-  if (parsed[0].timeMs >= GAP_THRESHOLD) {
-    withInterludes.push({ timeMs: 0, text: '...', isInterlude: true });
-  }
-
-  const DOTS_LEAD_MS = 2500; // los "..." aparecen este tiempo ANTES de que vuelva la letra
-  const MIN_LINE_DWELL_MS = 2500; // la linea cantada dura al menos esto antes de los "..."
-
-  for (let i = 0; i < parsed.length; i++) {
-    if (i > 0) {
-      const gap = parsed[i].timeMs - parsed[i - 1].timeMs;
-      if (gap >= GAP_THRESHOLD) {
-        // Los puntos aparecen cerca del FINAL del silencio, no al principio.
-        // Asi la ultima linea cantada se queda visible casi todo el hueco.
-        const dotsAt = Math.max(
-          parsed[i - 1].timeMs + MIN_LINE_DWELL_MS,
-          parsed[i].timeMs - DOTS_LEAD_MS
-        );
-        withInterludes.push({
-          timeMs: dotsAt,
-          text: '...',
-          isInterlude: true
-        });
-      }
-    }
-    withInterludes.push(parsed[i]);
-  }
-
-  return withInterludes;
-}
-
-function hasSyncedTimestamps(lrc) {
-  return typeof lrc === 'string' && /\[\d{1,3}:\d{2}(?:[\.,]\d{1,3})?\]\s*\S/.test(lrc);
-}
-
-let isPlaying = false;
-let currentPosMs = 0;
-let lastUpdateLocalTime = 0;
-let manualLyricOffsetMs = loadManualLyricOffsetMs();
-
-function loadManualLyricOffsetMs() {
-  const stored = Number(localStorage.getItem('manualLyricOffsetMs') || 0);
-  if (!Number.isFinite(stored)) return 0;
-  return Math.max(-MANUAL_LYRIC_OFFSET_LIMIT_MS, Math.min(MANUAL_LYRIC_OFFSET_LIMIT_MS, stored));
 }
 
 function formatOffset(ms) {
@@ -498,61 +399,37 @@ function formatOffset(ms) {
   return `${ms > 0 ? '+' : ''}${ms} ms`;
 }
 
-function updateManualOffsetLabel() {
-  const label = $('sync-offset');
-  if (label) label.textContent = formatOffset(manualLyricOffsetMs);
+if (syncSlider) {
+  syncSlider.addEventListener('input', (e) => {
+    syncEngine.offset.setOffset(Number(e.target.value));
+    updateSyncUI();
+    syncEngine.forceUpdate();
+  });
 }
 
-function setManualLyricOffsetMs(nextOffsetMs) {
-  const rounded = Math.round(Number(nextOffsetMs || 0) / 50) * 50;
-  manualLyricOffsetMs = Math.max(-MANUAL_LYRIC_OFFSET_LIMIT_MS, Math.min(MANUAL_LYRIC_OFFSET_LIMIT_MS, rounded));
-  localStorage.setItem('manualLyricOffsetMs', String(manualLyricOffsetMs));
-  updateManualOffsetLabel();
-  if (syncedLines) updateSyncPosition(getInterpolatedPositionMs(), true);
-}
-
-const syncMinusBtn = $('sync-minus');
-const syncPlusBtn = $('sync-plus');
 const syncResetBtn = $('sync-reset');
-if (syncMinusBtn) {
-  syncMinusBtn.onclick = () => setManualLyricOffsetMs(manualLyricOffsetMs - MANUAL_LYRIC_OFFSET_STEP_MS);
-}
-if (syncPlusBtn) {
-  syncPlusBtn.onclick = () => setManualLyricOffsetMs(manualLyricOffsetMs + MANUAL_LYRIC_OFFSET_STEP_MS);
-}
 if (syncResetBtn) {
-  syncResetBtn.onclick = () => setManualLyricOffsetMs(0);
+  syncResetBtn.onclick = () => {
+    syncEngine.offset.resetOffset();
+    updateSyncUI();
+    syncEngine.forceUpdate();
+  };
 }
-updateManualOffsetLabel();
+
+// Start the continuous rendering loop
+syncEngine.startSyncLoop();
+updateSyncUI();
 
 if (window.electronAPI) {
   electronAPI.onMediaUpdate(handleMediaUpdate);
 }
-
-function getInterpolatedPositionMs() {
-  if (!isPlaying) return Math.max(0, currentPosMs);
-  return Math.max(0, currentPosMs + (performance.now() - lastUpdateLocalTime));
-}
-
-function getLyricPositionMs(posMs) {
-  return Math.max(0, posMs + manualLyricOffsetMs);
-}
-
-// Continuous interpolator for smooth synced lyrics.
-function syncLoop() {
-  if (isPlaying && syncedLines) {
-    updateSyncPosition(getInterpolatedPositionMs());
-  }
-  requestAnimationFrame(syncLoop);
-}
-requestAnimationFrame(syncLoop);
 
 async function handleMediaUpdate(data) {
   lastMediaSnapshot = data;
   if (data.error) {
     npStatus.textContent = 'Sin reproduccion';
     npStatus.className = 'np-status';
-    isPlaying = false;
+    syncEngine.clock.freeze();
     return;
   }
 
@@ -565,47 +442,11 @@ async function handleMediaUpdate(data) {
     cleanArtist: cleanArtist(rawArtist),
     cleanTitle: cleanTitle(rawTitle)
   };
-  const wasPlaying = isPlaying;
-  isPlaying = data.status === 'Playing';
-  const statusChanged = (wasPlaying !== isPlaying);
 
-  if (data.positionMs != null) {
-    let exactPosMs = Number(data.positionMs);
-    if (Number.isFinite(exactPosMs)) {
-      const eventTimestampMs = Number(data.timestamp);
-      if (isPlaying && Number.isFinite(eventTimestampMs)) {
-        const transitMs = Date.now() - eventTimestampMs;
-        if (transitMs > 0) {
-          exactPosMs += Math.min(transitMs, MEDIA_EVENT_LATENCY_CAP_MS);
-        }
-      }
-      exactPosMs = Math.max(0, exactPosMs);
+  const syncState = syncEngine.processMediaUpdate(data);
+  updateSyncUI(); // Source might have changed
 
-      // Si la cancion acaba de empezar, si estaba en pausa y se dio Play,
-      // o si el tiempo es cero, sincronizamos forzosamente.
-      if (!isPlaying || currentPosMs === 0 || statusChanged) {
-        currentPosMs = exactPosMs;
-        lastUpdateLocalTime = performance.now();
-        if (syncedLines) updateSyncPosition(currentPosMs, true);
-      } else {
-        const elapsed = performance.now() - lastUpdateLocalTime;
-        const predictedPosMs = currentPosMs + elapsed;
-        const diff = exactPosMs - predictedPosMs;
-
-        // Diferencia grande = seek real, pausa/play o cambio de cancion -> resync duro.
-        if (Math.abs(diff) > SYNC_CORRECTION_THRESHOLD_MS) {
-          currentPosMs = exactPosMs;
-          lastUpdateLocalTime = performance.now();
-          if (syncedLines) updateSyncPosition(currentPosMs, true);
-        } else if (Math.abs(diff) > 40) {
-          // Drift pequeno (jitter del SMTC) -> acercarse gradualmente, sin saltos.
-          currentPosMs = predictedPosMs + diff * 0.2;
-          lastUpdateLocalTime = performance.now();
-        }
-      }
-    }
-  }
-
+  const isPlaying = syncEngine.isPlaying();
   npStatus.textContent = isPlaying ? 'Reproduciendo' : 'En pausa';
   npStatus.className = 'np-status' + (isPlaying ? ' playing' : '');
   npTitle.textContent = rawTitle;
@@ -615,8 +456,7 @@ async function handleMediaUpdate(data) {
   // New song? Fetch lyrics
   if (songKey !== lastSongKey && rawTitle) {
     lastSongKey = songKey;
-    syncedLines = null;
-    activeLineIdx = -1;
+    syncEngine.renderer.setLyrics(null);
 
     // Normal behavior: Change to a random background ONLY if we are not currently playing photos or videomusical
     if (currentBg !== 'fotos' && currentBg !== 'videomusical') {
@@ -637,27 +477,25 @@ async function handleMediaUpdate(data) {
       yt_loadVideo(ca, ct);
     }
 
-    // Check cache (IndexedDB � instant, works offline)
+    // Check cache (IndexedDB — instant, works offline)
     const cached = await getCached(ca, ct);
     if (cached && cached.manualSynced) {
-      syncedLines = parseLRC(cached.manualSynced);
-      displaySyncedLyrics(rawTitle, syncedLines);
+      displayLyricsData(rawTitle, LrcParser.parse(cached.manualSynced));
       return;
     }
     if (cached && cached.manualPlain) {
       displayPlainLyrics(rawTitle, cached.manualPlain);
       return;
     }
-    if (cached && hasSyncedTimestamps(cached.synced)) {
-      syncedLines = parseLRC(cached.synced);
-      displaySyncedLyrics(rawTitle, syncedLines);
+    if (cached && cached.synced && LrcParser.hasSyncedTimestamps(cached.synced)) {
+      displayLyricsData(rawTitle, LrcParser.parse(cached.synced));
       return;
     }
     if (cached && cached.plain) {
       displayPlainLyrics(rawTitle, cached.plain);
       return;
     }
-    if (cached && !cached.plain && !cached.synced) {
+    if (cached && !cached.plain && !cached.synced && !cached.manualPlain && !cached.manualSynced) {
       displayNoLyrics(rawTitle);
       return;
     }
@@ -674,8 +512,7 @@ async function handleMediaUpdate(data) {
     // Only update display if this is still the current song
     if (lastSongKey === songKey) {
       if (result.synced) {
-        syncedLines = parseLRC(result.synced);
-        displaySyncedLyrics(rawTitle, syncedLines);
+        displayLyricsData(rawTitle, LrcParser.parse(result.synced));
       } else if (result.plain) {
         displayPlainLyrics(rawTitle, result.plain);
       } else {
@@ -688,53 +525,6 @@ async function handleMediaUpdate(data) {
   }
 }
 
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
-// SYNCED LYRICS � scroll & highlight
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
-const LYRIC_LEAD_MS = 200; // activa cada linea un pelo antes de su timestamp
-
-function updateSyncPosition(posMs, force = false) {
-  if (!syncedLines || syncedLines.length === 0) return;
-
-  let newIdx = findActiveLineIndex(getLyricPositionMs(posMs) + LYRIC_LEAD_MS);
-
-  if (!force && newIdx === activeLineIdx) return;
-
-  // Avance de a UNA linea: si el reloj se adelanto varias, alcanzamos
-  // fluido frame a frame en vez de brincar varias lineas de golpe.
-  if (!force && newIdx > activeLineIdx + 1) newIdx = activeLineIdx + 1;
-
-  activeLineIdx = newIdx;
-
-  if (lyricLineEls.length === 0) {
-    lyricLineEls = Array.from(lyricsContent.querySelectorAll('.lyric-line'));
-  }
-
-  lyricLineEls.forEach((el, i) => {
-    el.classList.remove('active', 'past', 'upcoming');
-    if (i === activeLineIdx) el.classList.add('active');
-    else if (i < activeLineIdx) el.classList.add('past');
-    else el.classList.add('upcoming');
-  });
-
-  scrollActiveLineIntoView();
-}
-
-const LYRIC_BACK_HYSTERESIS_MS = 300; // margen para bajar de linea, evita temblor en el borde
-
-function findActiveLineIndex(posMs) {
-  let low = 0;
-  let high = syncedLines.length - 1;
-  let idx = -1;
-
-  while (low <= high) {
-    const mid = (low + high) >> 1;
-    if (posMs >= syncedLines[mid].timeMs) {
-      idx = mid;
-      low = mid + 1;
-    } else {
-      high = mid - 1;
-    }
   }
 
   // Histeresis: solo retrocedemos de linea si el reloj cayo CLARAMENTE por
@@ -830,7 +620,7 @@ async function fetchLrclib(artist, title, durationMs = null) {
     const getRes = await fetch(getUrl.toString());
     if (getRes.ok) {
       const getData = await getRes.json();
-      if (getData && hasSyncedTimestamps(getData.syncedLyrics)) {
+      if (getData && LrcParser.hasSyncedTimestamps(getData.syncedLyrics)) {
         return { synced: getData.syncedLyrics, plain: getData.plainLyrics || null };
       }
     }
@@ -842,7 +632,7 @@ async function fetchLrclib(artist, title, durationMs = null) {
     if (!res.ok) return { plain: null, synced: null };
     const data = await res.json();
     if (data && data.length > 0) {
-      const syncedCandidates = data.filter(d => hasSyncedTimestamps(d.syncedLyrics));
+      const syncedCandidates = data.filter(d => LrcParser.hasSyncedTimestamps(d.syncedLyrics));
       if (syncedCandidates.length === 0) return { plain: null, synced: null };
       const expectedDurationSec = Number(durationMs) > 0 ? Number(durationMs) / 1000 : null;
       const best = syncedCandidates

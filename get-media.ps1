@@ -54,14 +54,32 @@ while ($true) {
         }
       }
 
+      # Extract playback rate (defaults to 1.0 if unavailable)
+      $rate = 1.0
+      try {
+        if ($null -ne $playback.PlaybackRate) {
+          $rate = [double]$playback.PlaybackRate
+          if ($rate -le 0) { $rate = 1.0 }
+        }
+      } catch { $rate = 1.0 }
+
+      # Extract source app identifier for per-player offset persistence
+      $sourceApp = ""
+      try {
+        $sourceApp = $session.SourceAppUserModelId
+        if ($null -eq $sourceApp) { $sourceApp = "" }
+      } catch { $sourceApp = "" }
+
       $json = @{
-        title      = $info.Title
-        artist     = $info.Artist
-        album      = $info.AlbumTitle
-        status     = "$status"
-        positionMs = [long]([math]::Max(0, $posMs))
-        durationMs = [long]$durMs
-        timestamp  = [long]$timestampMs
+        title        = $info.Title
+        artist       = $info.Artist
+        album        = $info.AlbumTitle
+        status       = "$status"
+        positionMs   = [long]([math]::Max(0, $posMs))
+        durationMs   = [long]$durMs
+        timestamp    = [long]$timestampMs
+        playbackRate = $rate
+        source       = "$sourceApp"
       } | ConvertTo-Json -Compress
 
       Write-Output $json
