@@ -1,8 +1,8 @@
-version: 1.2.3
+version: 1.2.4
 files:
-  - url: Proyector-Cafecito-Setup-1.2.3.exe
-    sha512: RylPQEz5Yt2aaOfLEQB3dLOecQgaeeE6nzsndgu0dqz94+JZRl8wY0tb2vXgEXq9tyR+RiW40LL1AX9IPiIhkg==
-    size: 86079855
-path: Proyector-Cafecito-Setup-1.2.3.exe
-sha512: RylPQEz5Yt2aaOfLEQB3dLOecQgaeeE6nzsndgu0dqz94+JZRl8wY0tb2vXgEXq9tyR+RiW40LL1AX9IPiIhkg==
-releaseDate: '2026-07-15T10:33:04.636Z'
+  - url: Proyector-Cafecito-Setup-1.2.4.exe
+    sha512: UV2pw+mDZ7vuqZrsQ+/d9Hb5+RgA7tgW6Gf9UvEm9treo94yeeNWVDBo9p9Mwnd7LcmoUoIrXJIkp2NJ+wgB9A==
+    size: 86081136
+path: Proyector-Cafecito-Setup-1.2.4.exe
+sha512: UV2pw+mDZ7vuqZrsQ+/d9Hb5+RgA7tgW6Gf9UvEm9treo94yeeNWVDBo9p9Mwnd7LcmoUoIrXJIkp2NJ+wgB9A==
+releaseDate: '2026-07-15T10:46:15.771Z'
