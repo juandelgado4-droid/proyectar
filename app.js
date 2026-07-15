@@ -1840,3 +1840,17 @@ document.addEventListener('keydown', (e) => {
 // INIT
 // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
 switchBg('universo');
+
+
+function cleanArtist(raw) {
+  if (!raw) return '';
+  let c = raw.split(' - ')[0].trim();
+  c = c.replace(/\s*(feat\.?|ft\.?|featuring|&|,)\s+.*/i, '').trim();
+  return c;
+}
+
+function cleanTitle(raw) {
+  if (!raw) return '';
+  let c = raw.replace(/\s*[\(\[].*?[\)\]]\s*/g, '').trim();
+  return c;
+}
