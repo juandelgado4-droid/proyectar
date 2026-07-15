@@ -525,71 +525,29 @@ async function handleMediaUpdate(data) {
   }
 }
 
-  }
-
-  // Histeresis: solo retrocedemos de linea si el reloj cayo CLARAMENTE por
-  // debajo del timestamp de la linea actual. Mata el rebote i <-> i+1.
-  if (idx === activeLineIdx - 1 && activeLineIdx >= 0 && syncedLines[activeLineIdx]) {
-    if (posMs > syncedLines[activeLineIdx].timeMs - LYRIC_BACK_HYSTERESIS_MS) {
-      return activeLineIdx;
-    }
-  }
-
-  return idx;
-}
-
-function scrollActiveLineIntoView() {
-  if (activeLineIdx < 0 || !lyricLineEls[activeLineIdx]) return;
-
-  const el = lyricLineEls[activeLineIdx];
-  const targetTop = Math.max(
-    0,
-    el.offsetTop - (lyricsContainer.clientHeight / 2) + (el.offsetHeight / 2)
-  );
-  if (Math.abs(lyricsContainer.scrollTop - targetTop) < 4) return;
-  const now = performance.now();
-  const behavior = now - lastLyricScrollTime < 400 ? 'auto' : 'smooth';
-  lastLyricScrollTime = now;
-
-  lyricsContainer.scrollTo({ top: targetTop, behavior });
-}
-
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// ─────────────────────────────────────────────────────────────────
 // DISPLAY LYRICS
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
-function displaySyncedLyrics(title, lines) {
-  if (!lines) return displayNoLyrics(title);
-  activeLineIdx = -1;
-  lyricLineEls = [];
-  lastLyricScrollTime = 0;
-  let html = `<h1 class="lyrics-title">${title}</h1>`;
-  lines.forEach((l, i) => {
-    if (l.isInterlude) {
-      html += `<div class="lyric-line interlude-dots upcoming" data-idx="${i}">...</div>`;
-    } else {
-      html += `<div class="lyric-line upcoming" data-idx="${i}">${l.text}</div>`;
-    }
-  });
-  lyricsContent.innerHTML = html;
-  lyricLineEls = Array.from(lyricsContent.querySelectorAll('.lyric-line'));
+// ─────────────────────────────────────────────────────────────────
+function displayLyricsData(title, parseResult) {
+  if (!parseResult || !parseResult.lines || parseResult.lines.length === 0) {
+    return displayNoLyrics(title);
+  }
+  syncEngine.renderer.setLyrics(parseResult);
+  lyricsContent.innerHTML = syncEngine.renderer.generateHTML(title);
   lyricsContainer.scrollTop = 0;
-  updateSyncPosition(getInterpolatedPositionMs());
-  console.log("Letra sincronizada mostrada");
+  syncEngine.forceUpdate();
+  console.log("Letra sincronizada mostrada (formato:", parseResult.format, "words:", parseResult.hasWordLevel, ")");
 }
 
 function displayPlainLyrics(title, lyrics) {
-  syncedLines = null;
-  activeLineIdx = -1;
-  lyricLineEls = [];
+  syncEngine.renderer.setLyrics(null);
   lyricsContent.innerHTML = `<h1 class="lyrics-title">${title}</h1><div class="lyrics-plain">${lyrics}</div>`;
   lyricsContainer.scrollTop = 0;
 }
 
 function displayNoLyrics(title, isSearching = false) {
-  syncedLines = null;
-  activeLineIdx = -1;
-  lyricLineEls = [];
-  const msg = '...';
+  syncEngine.renderer.setLyrics(null);
+  const msg = isSearching ? 'Buscando...' : '...';
   lyricsContent.innerHTML = `<h1 class="lyrics-title">${title}</h1><p class="no-lyrics-dots">${msg}</p>`;
   lyricsContainer.scrollTop = 0;
 }

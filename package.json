@@ -1,6 +1,6 @@
 {
   "name": "proyector-cafecito",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Proyector de letras para Cafecito o Miedo",
   "main": "main.js",
   "scripts": {
