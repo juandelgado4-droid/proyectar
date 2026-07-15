@@ -52,7 +52,7 @@
           const correction = diff * this._pendingLerp.factor;
           pos += correction;
           // Update target for next frame (the target itself drifts with playback)
-          this._pendingLerp.targetPos += (now - this._localTs) * this._rate * this._pendingLerp.factor;
+          this._pendingLerp.targetPos += (now - this._localTs) * this._rate;
         }
         // Persist corrected position
         this._pos = pos;
