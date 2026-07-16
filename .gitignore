@@ -1,5 +1,4 @@
-dist/*
-!dist/*.exe
+dist/win-unpacked/
 node_modules/
 *.log
 builder-debug.yml
