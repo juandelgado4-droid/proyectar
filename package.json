@@ -28,7 +28,7 @@
     "productName": "Aurora Letras",
     "win": {
       "target": "nsis",
-      "icon": "logo.ico"
+      "icon": "logo.png"
     },
     "nsis": {
       "oneClick": false,
