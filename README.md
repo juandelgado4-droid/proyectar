@@ -9,7 +9,7 @@ Aplicación de escritorio para **proyección de letras** en Windows, con instala
 <p align="center">
   <a href="./dist/"><strong>📁 Abrir carpeta dist</strong></a>
   ·
-  <a href="./dist/Aurora%20Letras%20Setup%201.3.0.exe"><strong>⬇️ Descargar instalador (.exe)</strong></a>
+  <a href="./dist/Aurora%20Letras%20Setup%201.5.0.exe"><strong>⬇️ Descargar instalador (.exe)</strong></a>
 </p>
 
 ---
@@ -17,7 +17,7 @@ Aplicación de escritorio para **proyección de letras** en Windows, con instala
 ## 🚀 Instalación (usuario final)
 
 1. Entra a la carpeta **[dist](./dist/)**.
-2. Descarga **[Aurora Letras Setup 1.3.0.exe](./dist/Aurora%20Letras%20Setup%201.3.0.exe)**.
+2. Descarga **[Aurora Letras Setup 1.5.0.exe](./dist/Aurora%20Letras%20Setup%201.5.0.exe)**.
 3. Ejecuta el instalador y completa el asistente.
 4. Abre **Aurora Letras** desde el acceso directo.
 
@@ -30,6 +30,7 @@ Aplicación de escritorio para **proyección de letras** en Windows, con instala
 - Proyección de letras sincronizadas en pantalla completa.
 - Soporte de visuales/fondos.
 - Control de sincronización durante la reproducción.
+- **Cambio de logo interactivo**: Ahora puedes cambiar el logo directamente desde la aplicación sin tocar código.
 - Instalador de Windows listo para distribuir.
 
 ---
@@ -57,7 +58,10 @@ Si quieres ejecutar o compilar el proyecto localmente:
 
 ## 🏷️ Personalización de marca
 
-- **Logo:** reemplaza [logo.svg](logo.svg).
+- **Logo:** Tienes dos formas muy sencillas de cambiarlo:
+  - **Directamente en la App:** Abre la aplicación, pasa el ratón sobre el logo en la esquina inferior derecha y haz clic en **"Cambiar Logo"**. Selecciona cualquier imagen de tu computadora y la app la actualizará al instante.
+  - **Manual/Instalador:** Reemplaza el archivo `logo.svg` en la raíz de instalación.
+  - Para más detalles, consulta la guía completa: **[CAMBIA-EL-LOGO.md](CAMBIA-EL-LOGO.md)**.
 - **Nombre y títulos:** ajusta [branding.js](branding.js).
 - **Metadatos de app/instalador:** revisa [package.json](package.json) (`productName`, `appId`, `version`).
 
@@ -66,7 +70,7 @@ Si quieres ejecutar o compilar el proyecto localmente:
 ## 📦 Descargas
 
 - Carpeta de distribución: [dist](./dist/)
-- Instalador directo: [Aurora Letras Setup 1.3.0.exe](./dist/Aurora%20Letras%20Setup%201.3.0.exe)
+- Instalador directo: [Aurora Letras Setup 1.5.0.exe](./dist/Aurora%20Letras%20Setup%201.5.0.exe)
 
 > Si cambias la versión del instalador, recuerda actualizar este enlace en el README.
 
@@ -75,3 +79,4 @@ Si quieres ejecutar o compilar el proyecto localmente:
 ## 📄 Licencia
 
 Este proyecto está bajo la licencia [MIT](./LICENSE).
+
