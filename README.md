@@ -3,19 +3,21 @@
 Aplicación de escritorio para **proyección de letras** en Windows, con instalador listo para usar.
 
 <p align="center">
-  <img src="logo.png" alt="Aurora Letras" width="180">
+  <img src="logo.svg" alt="Aurora Letras" width="180">
 </p>
 
 <p align="center">
-  <a href="https://github.com/juandelgado4-droid/proyectar/releases/latest"><strong>⬇️ Descargar última versión (Releases)</strong></a>
+  <a href="./dist/"><strong>📁 Abrir carpeta dist</strong></a>
+  ·
+  <a href="./dist/Aurora%20Letras%20Setup%201.3.0.exe"><strong>⬇️ Descargar instalador (.exe)</strong></a>
 </p>
 
 ---
 
 ## 🚀 Instalación (usuario final)
 
-1. Entra a **[Releases](https://github.com/juandelgado4-droid/proyectar/releases/latest)**.
-2. Descarga el instalador `.exe` más reciente en la sección **Assets**.
+1. Entra a la carpeta **[dist](./dist/)**.
+2. Descarga **[Aurora Letras Setup 1.3.0.exe](./dist/Aurora%20Letras%20Setup%201.3.0.exe)**.
 3. Ejecuta el instalador y completa el asistente.
 4. Abre **Aurora Letras** desde el acceso directo.
 
@@ -55,7 +57,7 @@ Si quieres ejecutar o compilar el proyecto localmente:
 
 ## 🏷️ Personalización de marca
 
-- **Logo:** reemplaza [logo.png](logo.png).
+- **Logo:** reemplaza [logo.svg](logo.svg).
 - **Nombre y títulos:** ajusta [branding.js](branding.js).
 - **Metadatos de app/instalador:** revisa [package.json](package.json) (`productName`, `appId`, `version`).
 
@@ -63,26 +65,13 @@ Si quieres ejecutar o compilar el proyecto localmente:
 
 ## 📦 Descargas
 
-Para evitar enlaces rotos entre versiones, usa siempre:
+- Carpeta de distribución: [dist](./dist/)
+- Instalador directo: [Aurora Letras Setup 1.3.0.exe](./dist/Aurora%20Letras%20Setup%201.3.0.exe)
 
-- **Página de última release:**
-  - https://github.com/juandelgado4-droid/proyectar/releases/latest
-
-Desde ahí podrás descargar el archivo instalador correcto aunque cambie el nombre o versión.
-
----
-
-## 🤝 Contribuciones
-
-Si deseas contribuir:
-
-1. Haz un fork del repositorio.
-2. Crea una rama para tu cambio.
-3. Abre un Pull Request con una descripción clara.
+> Si cambias la versión del instalador, recuerda actualizar este enlace en el README.
 
 ---
 
 ## 📄 Licencia
 
-Este proyecto actualmente no define una licencia explícita en el repositorio.
-Si quieres, puedo ayudarte a agregar una (por ejemplo MIT).
+Este proyecto está bajo la licencia [MIT](./LICENSE).
