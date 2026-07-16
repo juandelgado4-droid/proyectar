@@ -1,8 +1,8 @@
-version: 1.3.0
+version: 1.4.0
 files:
-  - url: Aurora-Letras-Setup-1.3.0.exe
-    sha512: tXE5zy/kJPr92guxSo9RI+DwMp7dDjlegUD1x67JrC0JRShmHdcMmnVAmELHwQqQ46FzI3BItvS+VFqPDeaPnA==
-    size: 86079015
-path: Aurora-Letras-Setup-1.3.0.exe
-sha512: tXE5zy/kJPr92guxSo9RI+DwMp7dDjlegUD1x67JrC0JRShmHdcMmnVAmELHwQqQ46FzI3BItvS+VFqPDeaPnA==
-releaseDate: '2026-07-16T03:41:07.803Z'
+  - url: Aurora-Letras-Setup-1.4.0.exe
+    sha512: Ipw2aSlILJNFarf9oVG4HUbCF4ZJBwT9IdR7ZFHU3wgUJq1GncmYhhrboGyjtdsDkAagOUJHg/T2acHOUK9MgA==
+    size: 86086063
+path: Aurora-Letras-Setup-1.4.0.exe
+sha512: Ipw2aSlILJNFarf9oVG4HUbCF4ZJBwT9IdR7ZFHU3wgUJq1GncmYhhrboGyjtdsDkAagOUJHg/T2acHOUK9MgA==
+releaseDate: '2026-07-16T06:29:38.531Z'

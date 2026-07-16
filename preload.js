@@ -21,5 +21,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   searchYoutube: (artist, title) => ipcRenderer.invoke('search-youtube', artist, title),
   openProyector: () => ipcRenderer.send('open-proyector'),
   sendFakeMediaUpdate: (data) => ipcRenderer.send('fake-media-update', data),
-  sendProyectorCmd: (data) => ipcRenderer.send('proyector-cmd', data)
+  sendProyectorCmd: (data) => ipcRenderer.send('proyector-cmd', data),
+  changeLogo: () => ipcRenderer.invoke('change-logo'),
+  getAppPath: () => ipcRenderer.invoke('get-app-path')
 });

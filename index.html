@@ -37,8 +37,23 @@
 
   <script src="assets/vendor/three.min.js"></script>
 
-  <!-- Watermark Logo -->
-  <img src="logo.png" alt="Aurora Letras" id="watermark">
+  <!-- Watermark Logo (hover para cambiar) -->
+  <div id="watermark-wrapper" title="Haz clic para cambiar el logo">
+    <img src="logo.svg" alt="Aurora Letras" id="watermark">
+    <button id="change-logo-btn" title="Cambiar logo">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="17 8 12 3 7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Cambiar Logo</span>
+    </button>
+  </div>
+
+
+  <!-- Toast: Logo cambiado exitosamente -->
+  <div id="logo-changed-toast">✅ Logo actualizado — reinicia la app para verlo en el ícono</div>
+
 
   <!-- Now Playing -->
   <div class="now-playing" id="now-playing">

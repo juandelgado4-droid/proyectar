@@ -243,6 +243,25 @@ if (logoOpacitySlider && watermark) {
   });
 }
 
+// ── Botón "Cambiar Logo" ──
+const changeLogoBtn = $('change-logo-btn');
+const logoToast = $('logo-changed-toast');
+
+if (changeLogoBtn && window.electronAPI && window.electronAPI.changeLogo) {
+  changeLogoBtn.addEventListener('click', async () => {
+    const result = await window.electronAPI.changeLogo();
+    if (result && result.success) {
+      // Refresca la imagen del watermark inmediatamente
+      watermark.src = 'logo.svg?' + Date.now();
+      // Muestra toast de éxito
+      if (logoToast) {
+        logoToast.classList.add('show');
+        setTimeout(() => logoToast.classList.remove('show'), 3500);
+      }
+    }
+  });
+}
+
 if (toggleLyrics) {
   toggleLyrics.addEventListener('change', (e) => {
     lyricsContainer.style.opacity = e.target.checked ? '0' : '1';

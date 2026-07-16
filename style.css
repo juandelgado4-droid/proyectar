@@ -123,15 +123,114 @@ body.is-fullscreen .titlebar {
   to { transform: rotate(360deg); }
 }
 
-/* ─── Watermark ─── */
+/* ─── Watermark + Change Logo Button ─── */
+#watermark-wrapper {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: auto;
+}
+
 #watermark {
-  position: fixed; bottom: 20px; right: 20px;
-  width: 12vw; max-width: 200px;
-  opacity: 0.35; z-index: 3;
+  width: 12vw;
+  max-width: 200px;
+  opacity: 0.35;
   pointer-events: none;
   filter: grayscale(100%) brightness(1.5) drop-shadow(0px 4px 12px rgba(0,0,0,0.5));
-  transition: opacity 0.3s;
+  transition: opacity 0.3s, filter 0.3s;
+  display: block;
 }
+
+/* Al hacer hover sobre el wrapper, el logo se ilumina */
+#watermark-wrapper:hover #watermark {
+  opacity: 0.85;
+  filter: drop-shadow(0px 4px 18px rgba(192,132,252,0.5));
+}
+
+/* Botón de cambio de logo — aparece al hacer hover */
+#change-logo-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  background: rgba(192, 132, 252, 0.18);
+  border: 1px solid rgba(192, 132, 252, 0.45);
+  border-radius: 30px;
+  color: #e0b8ff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  white-space: nowrap;
+  /* Oculto por defecto */
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease, background 0.2s ease;
+}
+
+#change-logo-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* Aparece al hacer hover sobre el wrapper */
+#watermark-wrapper:hover #change-logo-btn {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+#change-logo-btn:hover {
+  background: rgba(192, 132, 252, 0.38);
+  border-color: rgba(192, 132, 252, 0.75);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+#change-logo-btn:active {
+  transform: scale(0.97);
+}
+
+/* Mensaje de éxito al cambiar el logo */
+#logo-changed-toast {
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  z-index: 999;
+  background: rgba(74, 222, 128, 0.15);
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  color: #4ade80;
+  padding: 10px 18px;
+  border-radius: 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+#logo-changed-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 
 /* ─── Now Playing ─── */
 .now-playing {

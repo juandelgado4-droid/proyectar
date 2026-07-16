@@ -1,5 +1,5 @@
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const { spawn } = require('child_process');
 const readline = require('readline');
 const path = require('path');
@@ -95,7 +95,7 @@ function createWindow() {
       nodeIntegration: false,
       webviewTag: true
     },
-    icon: path.join(__dirname, branding.logoPath)
+    icon: path.join(__dirname, branding.windowIconPath || branding.logoPath)
   });
 
   mainWindow.loadFile('index.html', { query: { mode: 'main' } });
@@ -214,7 +214,7 @@ function createProyectorWindow() {
       nodeIntegration: false,
       webviewTag: true
     },
-    icon: path.join(__dirname, branding.logoPath)
+    icon: path.join(__dirname, branding.windowIconPath || branding.logoPath)
   });
   proyectorWindow.loadFile('index.html', { query: { mode: 'proyector' } });
   proyectorWindow.setMenuBarVisibility(false);
@@ -359,6 +359,31 @@ ipcMain.handle('get-videos', async (event, subfolder) => {
 ipcMain.on('open-media-folder', () => {
   if (userDocs) shell.openPath(userDocs);
 });
+
+// ── Cambiar Logo ──
+// Abre un diálogo para seleccionar un SVG/PNG y lo copia como logo.svg en la carpeta de la app
+ipcMain.handle('change-logo', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    title: 'Elige tu nuevo logo',
+    filters: [
+      { name: 'Imágenes', extensions: ['svg', 'png', 'jpg', 'jpeg', 'webp', 'ico'] }
+    ],
+    properties: ['openFile']
+  });
+  if (canceled || !filePaths.length) return { success: false };
+  try {
+    const src = filePaths[0];
+    const dest = path.join(__dirname, 'logo.svg');
+    fs.copyFileSync(src, dest);
+    return { success: true, path: dest };
+  } catch (err) {
+    logError('change-logo error', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('get-app-path', () => __dirname);
+
 
 // ── YouTube Music Video Search ──
 ipcMain.handle('search-youtube', async (event, artist, title) => {
