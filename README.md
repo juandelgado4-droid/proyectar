@@ -72,7 +72,7 @@ Si quieres ejecutar o compilar el proyecto localmente:
 - Carpeta de distribución: [dist](./dist/)
 - Instalador directo: [Aurora Letras Setup 1.5.0.exe](./dist/Aurora%20Letras%20Setup%201.5.0.exe)
 
-> Si cambias la versión del instalador, recuerda actualizar este enlace en el README.
+
 
 ---
 
