@@ -1,14 +1,22 @@
 {
-  "name": "proyector-cafecito",
+  "name": "aurora-letras",
   "version": "1.2.4",
-  "description": "Proyector de letras para Cafecito o Miedo",
+  "description": "Proyector de letras sincronizadas con visuales",
   "main": "main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/juandelgado4-droid/proyectar.git"
+  },
+  "homepage": "https://github.com/juandelgado4-droid/proyectar",
+  "bugs": {
+    "url": "https://github.com/juandelgado4-droid/proyectar/issues"
+  },
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
     "build": "electron-builder --win"
   },
-  "author": "Cafecito o Miedo",
+  "author": "juandelgado4-droid",
   "license": "MIT",
   "devDependencies": {
     "electron": "36.3.1",
@@ -16,8 +24,8 @@
     "electron-updater": "^6.8.9"
   },
   "build": {
-    "appId": "com.cafecitoomiedo.proyector",
-    "productName": "Proyector Cafecito",
+    "appId": "com.auroraletras.player",
+    "productName": "Aurora Letras",
     "win": {
       "target": "nsis",
       "icon": "logo.png"

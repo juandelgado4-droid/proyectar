@@ -3,14 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Proyector de Letras - Cafecito o Miedo</title>
+  <title>Aurora Letras - Proyector de Letras</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="assets/fonts/fonts.css">
 </head>
 <body>
+  <script src="branding.js"></script>
+  <script>
+    document.title = window.BRANDING.windowTitle;
+  </script>
   <!-- Custom Title Bar -->
   <div class="titlebar" id="titlebar">
-    <span class="titlebar-title">Cafecito o Miedo - Proyector de Letras</span>
+    <span class="titlebar-title">Aurora Letras - Proyector de Letras</span>
     <div class="titlebar-btns">
       <button class="tb-btn" id="tb-min">─</button>
       <button class="tb-btn" id="tb-max">□</button>
@@ -34,7 +38,7 @@
   <script src="assets/vendor/three.min.js"></script>
 
   <!-- Watermark Logo -->
-  <img src="logo.png" alt="Cafecito o Miedo" id="watermark">
+  <img src="logo.png" alt="Aurora Letras" id="watermark">
 
   <!-- Now Playing -->
   <div class="now-playing" id="now-playing">

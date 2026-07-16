@@ -4,6 +4,7 @@ const { spawn } = require('child_process');
 const readline = require('readline');
 const path = require('path');
 const fs = require('fs');
+const branding = require('./branding');
 let autoUpdater = null;
 
 try {
@@ -45,7 +46,7 @@ function appendLog(level, message) {
   const line = `[${new Date().toISOString()}] [${level}] ${message}\n`;
   try {
     if (!logFilePath) {
-      logFilePath = path.join(app.getPath('userData'), 'proyector.log');
+      logFilePath = path.join(app.getPath('userData'), 'aurora-letras.log');
     }
     fs.appendFileSync(logFilePath, line, 'utf8');
   } catch {}
@@ -94,7 +95,7 @@ function createWindow() {
       nodeIntegration: false,
       webviewTag: true
     },
-    icon: path.join(__dirname, 'logo.png')
+    icon: path.join(__dirname, branding.logoPath)
   });
 
   mainWindow.loadFile('index.html', { query: { mode: 'main' } });
@@ -213,7 +214,7 @@ function createProyectorWindow() {
       nodeIntegration: false,
       webviewTag: true
     },
-    icon: path.join(__dirname, 'logo.png')
+    icon: path.join(__dirname, branding.logoPath)
   });
   proyectorWindow.loadFile('index.html', { query: { mode: 'proyector' } });
   proyectorWindow.setMenuBarVisibility(false);
