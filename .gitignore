@@ -1,5 +1,7 @@
 dist/win-unpacked/
+dist/
 dist/builder-debug.yml
 node_modules/
 *.log
 builder-debug.yml
+fix.js

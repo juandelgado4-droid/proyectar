@@ -1,29 +1,43 @@
 # Aurora Letras
 
-Aplicación de escritorio en Electron para proyectar letras sincronizadas y visuales en pantalla completa.
+Un proyector de letras para escritorio hecho en Electron, pensado para abrirlo, instalarlo y usarlo sin fricción.
 
-## Instalar
+<p align="center">
+	<img src="logo.png" alt="Aurora Letras" width="180">
+</p>
+
+## Lo que hace
+
+- Proyecta letras sincronizadas en una ventana limpia y a pantalla completa.
+- Soporta visuales, fondos, controles de texto y ajuste de sincronía.
+- Incluye instalador de Windows para distribuirlo como app de escritorio.
+
+## Instalación
 
 ```bash
 npm install
 ```
 
-## Ejecutar en desarrollo
+## Desarrollo
 
 ```bash
 npm start
 ```
 
-## Generar instalador
+## Build final
 
 ```bash
 npm run build
 ```
 
-## Cambiar la marca
+## Estructura de marca
 
-El punto único para editar nombre, título e identidad visual es [branding.js](branding.js).
+La configuración central de nombre, títulos y referencias de la app está en [branding.js](branding.js).
 
-Para cambiar el logo, reemplaza el archivo [logo.png](logo.png) por tu nuevo ícono usando el mismo nombre y formato.
+Si quieres cambiar el logo, reemplaza directamente [logo.png](logo.png). Ese es el archivo que la app y el instalador usan como identidad visual.
 
-Los títulos visibles de ventanas y el nombre del paquete se actualizan desde [package.json](package.json) y [branding.js](branding.js).
+Los metadatos de publicación viven en [package.json](package.json): ahí se define el nombre del paquete, `appId`, `productName` y la versión final.
+
+## Publicación
+
+El repositorio está pensado para que cualquiera pueda instalarlo con `npm install`, ejecutarlo con `npm start` y generar su propio instalador con `npm run build`.
