@@ -1,4 +1,5 @@
 dist/win-unpacked/
+release/
 node_modules/
 *.log
 builder-debug.yml

@@ -231,6 +231,26 @@ if (logoOpacitySlider && watermark) {
   });
 }
 
+function applyLogoPayload(payload) {
+  if (!watermark || !payload || !payload.src) return;
+  watermark.src = payload.src;
+}
+
+async function initLogo() {
+  if (!window.electronAPI || !window.electronAPI.getLogo) return;
+  try {
+    applyLogoPayload(await window.electronAPI.getLogo());
+  } catch (error) {
+    console.error('Error loading logo:', error);
+  }
+}
+
+initLogo();
+
+if (window.electronAPI && window.electronAPI.onLogoUpdated) {
+  window.electronAPI.onLogoUpdated(applyLogoPayload);
+}
+
 if (toggleLyrics) {
   toggleLyrics.addEventListener('change', (e) => {
     lyricsContainer.style.opacity = e.target.checked ? '0' : '1';
@@ -649,6 +669,7 @@ function switchBg(name) {
   if (name === 'fotos') {
     if (folderGroup) folderGroup.style.display = 'inline-block';
     updateFoldersList();
+    if (ft_media.length === 0 && !ft_loading) ft_loadMedia(ft_currentFolder);
     if (typeof ft_startAutoRefresh === 'function') ft_startAutoRefresh();
   } else {
     if (folderGroup) folderGroup.style.display = 'none';
@@ -1270,6 +1291,11 @@ let ft_videoEl = null; // Current playing video element
 let ft_videoNextEl = null; // Next video element (for preload)
 let ft_currentFolder = '';
 let ft_refreshInterval = null;
+let ft_refreshing = false;
+let ft_lastLoadAttempt = 0;
+let ft_loadRequestId = 0;
+const FT_EMPTY_RETRY_MS = 10000;
+const FT_REFRESH_MS = 15000;
 
 function ft_stopAutoRefresh() {
   if (ft_refreshInterval) {
@@ -1278,76 +1304,120 @@ function ft_stopAutoRefresh() {
   }
 }
 
+function ft_createMediaObject(item) {
+  if (item && item.type === 'video') {
+    return { type: 'video', src: item.src, ready: false };
+  }
+  const src = typeof item === 'string' ? item : item?.src;
+  return { type: 'image', el: null, src, loading: false, failed: false };
+}
+
+function ft_prepareImage(item) {
+  if (!item || item.type !== 'image' || !item.src || item.failed) return null;
+  if (item.el) return item.el;
+
+  const img = new Image();
+  item.loading = true;
+  img.onload = () => { item.loading = false; };
+  img.onerror = () => {
+    item.loading = false;
+    item.failed = true;
+  };
+  img.src = item.src;
+  item.el = img;
+  return img;
+}
+
+function ft_canDrawImage(img) {
+  return Boolean(img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
+}
+
+function ft_prepareNearbyMedia() {
+  ft_prepareImage(ft_mediaObjs[ft_currentIdx]);
+  ft_prepareImage(ft_mediaObjs[ft_nextIdx]);
+}
+
 function ft_startAutoRefresh() {
   ft_stopAutoRefresh();
   ft_refreshInterval = setInterval(async () => {
-    if (currentBg !== 'fotos' || !window.electronAPI || !window.electronAPI.getFotos) return;
-    const newList = await window.electronAPI.getFotos(ft_currentFolder);
-    
-    const currentSrcs = ft_media.map(m => m.src);
-    const newSrcs = newList.map(m => m.src);
-    
-    let changed = false;
-    if (currentSrcs.length !== newSrcs.length) changed = true;
-    else {
-      for(let i=0; i<newSrcs.length; i++) {
-        if(newSrcs[i] !== currentSrcs[i]) { changed = true; break; }
+    if (currentBg !== 'fotos' || ft_refreshing || ft_loading || !window.electronAPI || !window.electronAPI.getFotos) return;
+    ft_refreshing = true;
+    try {
+      const newList = await window.electronAPI.getFotos(ft_currentFolder);
+      const safeList = Array.isArray(newList) ? newList : [];
+      const currentSrcs = ft_media.map(m => m.src);
+      const newSrcs = safeList.map(m => m.src);
+
+      let changed = false;
+      if (currentSrcs.length !== newSrcs.length) changed = true;
+      else {
+        for(let i=0; i<newSrcs.length; i++) {
+          if(newSrcs[i] !== currentSrcs[i]) { changed = true; break; }
+        }
       }
+
+      if (changed) {
+        if (ft_media.length === 0) {
+          ft_loadMedia(ft_currentFolder);
+          return;
+        }
+        ft_media = safeList;
+        ft_mediaObjs = safeList.map(item => {
+          const existing = ft_mediaObjs.find(o => o.src === item.src);
+          return existing || ft_createMediaObject(item);
+        });
+        if (ft_media.length === 0) {
+          ft_currentIdx = -1;
+          ft_nextIdx = -1;
+          ft_cleanupVideos();
+          return;
+        }
+        if (ft_currentIdx >= ft_media.length) {
+          ft_currentIdx = 0;
+          ft_nextIdx = ft_media.length > 1 ? 1 : 0;
+          ft_showMedia(ft_currentIdx);
+        } else {
+          ft_nextIdx = (ft_currentIdx + 1) % ft_media.length;
+          ft_prepareNearbyMedia();
+        }
+        updateFoldersList(); // check for newly added folders as well
+      }
+    } catch (error) {
+      console.error('Error refreshing photos:', error);
+    } finally {
+      ft_refreshing = false;
     }
-    
-    if (changed) {
-      if (ft_media.length === 0) {
-        ft_loadMedia(ft_currentFolder);
-        return;
-      }
-      ft_media = newList;
-      ft_mediaObjs = newList.map(item => {
-        const existing = ft_mediaObjs.find(o => o.src === item.src);
-        if (existing) return existing;
-        if (item.type === 'video') return { type: 'video', src: item.src, ready: false };
-        const img = new Image();
-        img.src = item.src;
-        return { type: 'image', el: img, src: item.src };
-      });
-      if (ft_currentIdx >= ft_media.length) {
-        ft_currentIdx = 0;
-        ft_nextIdx = ft_media.length > 1 ? 1 : 0;
-        ft_showMedia(ft_currentIdx);
-      } else {
-        ft_nextIdx = (ft_currentIdx + 1) % ft_media.length;
-      }
-      updateFoldersList(); // check for newly added folders as well
-    }
-  }, 5000);
+  }, FT_REFRESH_MS);
 }
 
 function ft_loadMedia(folder = '') {
-  if (ft_loading || !window.electronAPI || !window.electronAPI.getFotos) return;
+  if (!window.electronAPI || !window.electronAPI.getFotos) return;
+  const requestedFolder = folder || '';
+  if (ft_loading && requestedFolder === ft_currentFolder) return;
   ft_loading = true;
-  ft_currentFolder = folder;
-  window.electronAPI.getFotos(folder).then(mediaList => {
-    ft_media = mediaList;
-    ft_mediaObjs = mediaList.map(item => {
-      if (item.type === 'video') {
-        return { type: 'video', src: item.src, ready: false };
-      } else {
-        // Legacy support: if item is a string (old format), treat as image
-        const src = typeof item === 'string' ? item : item.src;
-        const img = new Image();
-        img.src = src;
-        return { type: 'image', el: img, src };
-      }
-    });
-    ft_loading = false;
+  ft_currentFolder = requestedFolder;
+  ft_lastLoadAttempt = performance.now();
+  const requestId = ++ft_loadRequestId;
+
+  window.electronAPI.getFotos(requestedFolder).then(mediaList => {
+    if (requestId !== ft_loadRequestId) return;
+    ft_media = Array.isArray(mediaList) ? mediaList : [];
+    ft_mediaObjs = ft_media.map(ft_createMediaObject);
     if(ft_media.length > 0) {
       ft_currentIdx = 0;
       ft_nextIdx = ft_media.length > 1 ? 1 : 0;
       ft_lastSwitch = performance.now();
       ft_showMedia(ft_currentIdx);
     } else {
+      ft_currentIdx = -1;
+      ft_nextIdx = -1;
       ft_cleanupVideos();
     }
-  }).catch(() => { ft_loading = false; });
+  }).catch(error => {
+    if (requestId === ft_loadRequestId) console.error('Error loading photos:', error);
+  }).finally(() => {
+    if (requestId === ft_loadRequestId) ft_loading = false;
+  });
 }
 
 function ft_createVideoEl(src) {
@@ -1382,6 +1452,9 @@ function ft_showMedia(idx) {
     ft_videoEl.onended = () => {
       ft_advanceSlide();
     };
+  } else {
+    ft_cleanupVideos();
+    ft_prepareNearbyMedia();
   }
 }
 
@@ -1408,8 +1481,8 @@ function ft_previousSlide() {
 }
 
 function drawCover(img, alpha) {
-  if (!img || !img.complete || img.naturalWidth === 0) return;
-  const imgRatio = img.width / img.height;
+  if (!ft_canDrawImage(img)) return;
+  const imgRatio = img.naturalWidth / img.naturalHeight;
   const canvasRatio = W / H;
   
   // 1. Draw blurred background (Cover)
@@ -1449,7 +1522,10 @@ function loopFotos(now) {
     animFrame = requestAnimationFrame(loopFotos);
     return;
   }
-  if (ft_media.length === 0 && !ft_loading) ft_loadMedia(ft_currentFolder);
+  const frameNow = typeof now === 'number' ? now : performance.now();
+  if (ft_media.length === 0 && !ft_loading && frameNow - ft_lastLoadAttempt > FT_EMPTY_RETRY_MS) {
+    ft_loadMedia(ft_currentFolder);
+  }
   
   ctx.fillStyle = '#050505'; ctx.fillRect(0,0,W,H);
   
@@ -1458,46 +1534,74 @@ function loopFotos(now) {
   if (ft_media.length > 0 && currentItem) {
     if (currentItem.type === 'video') {
       // Video is handled by the overlay element
-    } else if (currentItem.type === 'image' && currentItem.el) {
-      const now = performance.now();
-      const elapsed = now - ft_lastSwitch;
+    } else if (currentItem.type === 'image') {
+      const currentImg = ft_prepareImage(currentItem);
+      if (!ft_canDrawImage(currentImg)) {
+        if (currentItem.failed && ft_media.length > 1) ft_advanceSlide();
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.font = '20px Inter';
+        ctx.textAlign = 'center';
+        ctx.fillText(currentItem.failed ? 'No se pudo cargar esta imagen' : 'Cargando imagen...', W/2, H/2);
+        ctx.globalAlpha = 1;
+        animFrame = requestAnimationFrame(loopFotos);
+        return;
+      }
+
+      const elapsed = frameNow - ft_lastSwitch;
       const duration = 10000; // 10 seconds per photo
       const fadeDuration = 2000; // 2 seconds crossfade
       
       let progress = elapsed / duration;
 
-      // Draw blurred background always
-      ctx.globalAlpha = 0.4;
-      ctx.filter = 'blur(12px)';
-      ctx.drawImage(currentItem.el, 0, 0, W, H);
-      ctx.filter = 'none';
-      ctx.globalAlpha = 1;
+      try {
+        // Draw blurred background always
+        ctx.globalAlpha = 0.4;
+        ctx.filter = 'blur(12px)';
+        ctx.drawImage(currentImg, 0, 0, W, H);
+        ctx.filter = 'none';
+        ctx.globalAlpha = 1;
 
-      // Zoom in softly by 5%
-      const scale = 1.0 + (progress * 0.05);
-      ctx.save();
-      ctx.translate(W/2, H/2);
-      ctx.scale(scale, scale);
-      ctx.translate(-W/2, -H/2);
-      drawCover(currentItem.el, 1);
-      ctx.restore();
-      
-      if (elapsed > duration - fadeDuration && ft_media.length > 1) {
-        const nextItem = ft_mediaObjs[ft_nextIdx];
-        if (nextItem && nextItem.type === 'image' && nextItem.el) {
-          const fadeProgress = (elapsed - (duration - fadeDuration)) / fadeDuration;
-          const nextScale = 1.0 + (fadeProgress * 0.05 * (fadeDuration/duration));
-          ctx.save();
-          ctx.translate(W/2, H/2);
-          ctx.scale(nextScale, nextScale);
-          ctx.translate(-W/2, -H/2);
-          drawCover(nextItem.el, fadeProgress);
-          ctx.restore();
-        }
+        // Zoom in softly by 5%
+        const scale = 1.0 + (progress * 0.05);
+        ctx.save();
+        ctx.translate(W/2, H/2);
+        ctx.scale(scale, scale);
+        ctx.translate(-W/2, -H/2);
+        drawCover(currentImg, 1);
+        ctx.restore();
         
-        if (elapsed >= duration) {
+        if (elapsed > duration - fadeDuration && ft_media.length > 1) {
+          const nextItem = ft_mediaObjs[ft_nextIdx];
+          const nextImg = nextItem && nextItem.type === 'image' ? ft_prepareImage(nextItem) : null;
+          if (ft_canDrawImage(nextImg)) {
+            const fadeProgress = (elapsed - (duration - fadeDuration)) / fadeDuration;
+            const nextScale = 1.0 + (fadeProgress * 0.05 * (fadeDuration/duration));
+            ctx.save();
+            ctx.translate(W/2, H/2);
+            ctx.scale(nextScale, nextScale);
+            ctx.translate(-W/2, -H/2);
+            drawCover(nextImg, fadeProgress);
+            ctx.restore();
+          }
+
+          if (elapsed >= duration) {
+            ft_advanceSlide();
+          }
+        }
+      } catch (error) {
+        console.error('Error drawing photo:', error);
+        currentItem.failed = true;
+        ctx.filter = 'none';
+        ctx.globalAlpha = 1;
+        if (ft_media.length > 1) {
           ft_advanceSlide();
         }
+      } finally {
+        ctx.filter = 'none';
+        ctx.globalAlpha = 1;
+        try {
+          ctx.restore();
+        } catch {}
       }
     }
   } else if (!ft_loading) {

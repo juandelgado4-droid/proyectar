@@ -1,8 +1,8 @@
-version: 1.5.0
+version: 1.5.1
 files:
-  - url: Aurora-Letras-Setup-1.5.0.exe
-    sha512: x/LCjkH2pd/Z4xvKJz2AHuct6PfUcUtolwVau+TT80lZXIb6PgTOZfRtXz4DI4ol99oxiGmGFUe/+kInyougaQ==
-    size: 85575615
-path: Aurora-Letras-Setup-1.5.0.exe
-sha512: x/LCjkH2pd/Z4xvKJz2AHuct6PfUcUtolwVau+TT80lZXIb6PgTOZfRtXz4DI4ol99oxiGmGFUe/+kInyougaQ==
-releaseDate: '2026-07-16T08:50:26.557Z'
+  - url: Aurora Letras Setup 1.5.1.exe
+    sha512: vcQ87jK/VA7mMBozYm3MqyZ7Z/bZSFaiP8tcZlcGA5qy5evPu+Yzn/rBaJ5kwK5VCqrqUIzwqyNaIePqwrIcog==
+    size: 85577444
+path: Aurora Letras Setup 1.5.1.exe
+sha512: vcQ87jK/VA7mMBozYm3MqyZ7Z/bZSFaiP8tcZlcGA5qy5evPu+Yzn/rBaJ5kwK5VCqrqUIzwqyNaIePqwrIcog==
+releaseDate: '2026-07-23T05:02:11.270Z'

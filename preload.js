@@ -22,6 +22,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openProyector: () => ipcRenderer.send('open-proyector'),
   sendFakeMediaUpdate: (data) => ipcRenderer.send('fake-media-update', data),
   sendProyectorCmd: (data) => ipcRenderer.send('proyector-cmd', data),
+  getLogo: () => ipcRenderer.invoke('get-logo'),
   changeLogo: () => ipcRenderer.invoke('change-logo'),
+  onLogoUpdated: (callback) => ipcRenderer.on('logo-updated', (_e, data) => callback(data)),
   getAppPath: () => ipcRenderer.invoke('get-app-path')
 });

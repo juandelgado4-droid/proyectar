@@ -1,5 +1,7 @@
 # Aurora Letras
 
+Version actual del codigo e instalador: **1.5.1**.
+
 Aplicación de escritorio para **proyección de letras** en Windows, con instalador listo para usar.
 
 <p align="center">
@@ -9,7 +11,7 @@ Aplicación de escritorio para **proyección de letras** en Windows, con instala
 <p align="center">
   <a href="./dist/"><strong>📁 Abrir carpeta dist</strong></a>
   ·
-  <a href="./dist/Aurora%20Letras%20Setup%201.5.0.exe"><strong>⬇️ Descargar instalador (.exe)</strong></a>
+  <a href="./dist/Aurora%20Letras%20Setup%201.5.1.exe"><strong>⬇️ Descargar instalador (.exe)</strong></a>
 </p>
 
 ---
@@ -17,7 +19,7 @@ Aplicación de escritorio para **proyección de letras** en Windows, con instala
 ## 🚀 Instalación (usuario final)
 
 1. Entra a la carpeta **[dist](./dist/)**.
-2. Descarga **[Aurora Letras Setup 1.5.0.exe](./dist/Aurora%20Letras%20Setup%201.5.0.exe)**.
+2. Descarga **[Aurora Letras Setup 1.5.1.exe](./dist/Aurora%20Letras%20Setup%201.5.1.exe)**.
 3. Ejecuta el instalador y completa el asistente.
 4. Abre **Aurora Letras** desde el acceso directo.
 
@@ -31,6 +33,7 @@ Aplicación de escritorio para **proyección de letras** en Windows, con instala
 - Soporte de visuales/fondos.
 - Control de sincronización durante la reproducción.
 - **Cambio de logo interactivo**: Ahora puedes cambiar el logo directamente desde la aplicación sin tocar código.
+- Modo Fotos optimizado para carpetas grandes y archivos invalidos.
 - Instalador de Windows listo para distribuir.
 
 ---
@@ -70,9 +73,7 @@ Si quieres ejecutar o compilar el proyecto localmente:
 ## 📦 Descargas
 
 - Carpeta de distribución: [dist](./dist/)
-- Instalador directo: [Aurora Letras Setup 1.5.0.exe](./dist/Aurora%20Letras%20Setup%201.5.0.exe)
-
-
+- Instalador directo: [Aurora Letras Setup 1.5.1.exe](./dist/Aurora%20Letras%20Setup%201.5.1.exe)
 
 ---
 

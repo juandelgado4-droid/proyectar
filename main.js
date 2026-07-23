@@ -4,8 +4,10 @@ const { spawn } = require('child_process');
 const readline = require('readline');
 const path = require('path');
 const fs = require('fs');
+const { pathToFileURL } = require('url');
 const branding = require('./branding');
 let autoUpdater = null;
+const fsp = fs.promises;
 
 try {
   ({ autoUpdater } = require('electron-updater'));
@@ -35,6 +37,121 @@ function getAppPath(relativePath) {
     return path.join(process.resourcesPath, relativePath);
   }
   return path.join(__dirname, relativePath);
+}
+
+const LOGO_EXTENSIONS = new Set(['.svg', '.png', '.jpg', '.jpeg', '.webp', '.ico']);
+const PHOTO_VIDEO_EXTENSIONS = /\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|avi)$/i;
+const VIDEO_EXTENSIONS = /\.(mp4|webm|mov|avi|mkv)$/i;
+const FS_CONCURRENCY = 24;
+
+function getDefaultLogoPath() {
+  return path.join(__dirname, branding.logoPath || 'logo.svg');
+}
+
+function getLogoConfigPath() {
+  return path.join(app.getPath('userData'), 'logo-config.json');
+}
+
+function readLogoConfig() {
+  try {
+    const config = JSON.parse(fs.readFileSync(getLogoConfigPath(), 'utf8'));
+    if (config && config.path && fs.existsSync(config.path)) return config;
+  } catch {}
+  return null;
+}
+
+function resolveLogoPath() {
+  const config = readLogoConfig();
+  return config?.path || getDefaultLogoPath();
+}
+
+function getLogoPayload() {
+  const logoPath = resolveLogoPath();
+  let version = Date.now();
+  try {
+    version = Math.round(fs.statSync(logoPath).mtimeMs);
+  } catch {}
+  return {
+    src: `${pathToFileURL(logoPath).toString()}?v=${version}`,
+    path: logoPath,
+    isCustom: Boolean(readLogoConfig())
+  };
+}
+
+function getWindowIconPath() {
+  const config = readLogoConfig();
+  if (config?.path) return config.path;
+  return path.join(__dirname, branding.windowIconPath || branding.logoPath || 'logo.svg');
+}
+
+function broadcastLogoUpdated(payload) {
+  for (const win of [mainWindow, proyectorWindow]) {
+    if (!win || win.isDestroyed()) continue;
+    win.webContents.send('logo-updated', payload);
+    if (typeof win.setIcon === 'function') {
+      try { win.setIcon(payload.path); } catch {}
+    }
+  }
+}
+
+async function mapWithConcurrency(items, limit, mapper) {
+  const results = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await mapper(items[index], index);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+async function ensureDir(dir) {
+  await fsp.mkdir(dir, { recursive: true });
+}
+
+function resolveMediaDir(baseDir, subfolder) {
+  const base = path.resolve(baseDir);
+  const requested = String(subfolder || '').trim();
+  const target = requested ? path.resolve(base, requested) : base;
+  if (target !== base && !target.startsWith(base + path.sep)) {
+    throw new Error('Carpeta invalida');
+  }
+  return target;
+}
+
+async function listSubfolders(baseDir) {
+  await ensureDir(baseDir);
+  const entries = await fsp.readdir(baseDir, { withFileTypes: true });
+  return entries
+    .filter(entry => entry.isDirectory())
+    .map(entry => entry.name)
+    .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+}
+
+async function listMediaFiles(baseDir, subfolder, matcher, toItem) {
+  await ensureDir(baseDir);
+  const dir = resolveMediaDir(baseDir, subfolder);
+  await ensureDir(dir);
+  const entries = await fsp.readdir(dir, { withFileTypes: true });
+  const files = entries
+    .filter(entry => entry.isFile() && matcher.test(entry.name))
+    .map(entry => entry.name);
+
+  const filesWithStats = await mapWithConcurrency(files, FS_CONCURRENCY, async (file) => {
+    const fullPath = path.join(dir, file);
+    try {
+      const stat = await fsp.stat(fullPath);
+      return { file, fullPath, mtime: stat.mtimeMs };
+    } catch {
+      return { file, fullPath, mtime: 0 };
+    }
+  });
+
+  return filesWithStats
+    .sort((a, b) => b.mtime - a.mtime)
+    .map(toItem);
 }
 
 let mainWindow;
@@ -95,7 +212,7 @@ function createWindow() {
       nodeIntegration: false,
       webviewTag: true
     },
-    icon: path.join(__dirname, branding.windowIconPath || branding.logoPath)
+    icon: getWindowIconPath()
   });
 
   mainWindow.loadFile('index.html', { query: { mode: 'main' } });
@@ -214,7 +331,7 @@ function createProyectorWindow() {
       nodeIntegration: false,
       webviewTag: true
     },
-    icon: path.join(__dirname, branding.windowIconPath || branding.logoPath)
+    icon: getWindowIconPath()
   });
   proyectorWindow.loadFile('index.html', { query: { mode: 'proyector' } });
   proyectorWindow.setMenuBarVisibility(false);
@@ -232,40 +349,29 @@ ipcMain.on('proyector-cmd', (event, data) => {
 });
 
 ipcMain.handle('get-fotos-folders', async () => {
-  const dir = path.join(userDocs, 'fotos y videos');
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-  const items = fs.readdirSync(dir, { withFileTypes: true });
-  return items.filter(dirent => dirent.isDirectory()).map(dirent => dirent.name);
+  try {
+    return await listSubfolders(path.join(userDocs, 'fotos y videos'));
+  } catch (error) {
+    logError('get-fotos-folders error', error);
+    return [];
+  }
 });
 
 ipcMain.handle('get-fotos', async (event, subfolder) => {
-  const baseDir = path.join(userDocs, 'fotos y videos');
-  const dir = subfolder ? path.join(baseDir, subfolder) : baseDir;
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  const files = fs.readdirSync(dir);
-  
-  const filesWithStats = files
-    .filter(f => /\.(jpg|jpeg|png|gif|webp|mp4|webm|mov|avi)$/i.test(f))
-    .map(f => {
-      const fullPath = path.join(dir, f);
-      try {
-        const stat = fs.statSync(fullPath);
-        return { file: f, mtime: stat.mtimeMs };
-      } catch (e) {
-        return { file: f, mtime: 0 };
-      }
-    });
-    
-  // Sort descending by mtime (newest first)
-  filesWithStats.sort((a, b) => b.mtime - a.mtime);
-  
-  const media = filesWithStats.map(obj => {
-    const f = obj.file;
-    const isVideo = /\.(mp4|webm|mov|avi)$/i.test(f);
-    const srcPath = subfolder ? path.join(baseDir, subfolder, f) : path.join(baseDir, f);
-    return { src: 'file:///' + srcPath.replace(/\\/g, '/'), type: isVideo ? 'video' : 'image' };
-  });
-  return media;
+  try {
+    return await listMediaFiles(
+      path.join(userDocs, 'fotos y videos'),
+      subfolder,
+      PHOTO_VIDEO_EXTENSIONS,
+      item => ({
+        src: pathToFileURL(item.fullPath).toString(),
+        type: /\.(mp4|webm|mov|avi)$/i.test(item.file) ? 'video' : 'image'
+      })
+    );
+  } catch (error) {
+    logError('get-fotos error', error);
+    return [];
+  }
 });
 
 // ── Media Control (simulate media keys) ──
@@ -322,46 +428,39 @@ ipcMain.on('media-prev', () => sendMediaKey('0xB1'));
 
 // ── Videos folder handlers ──
 ipcMain.handle('get-videos-folders', async () => {
-  const dir = path.join(userDocs, 'solo videos');
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-  const items = fs.readdirSync(dir, { withFileTypes: true });
-  return items.filter(dirent => dirent.isDirectory()).map(dirent => dirent.name);
+  try {
+    return await listSubfolders(path.join(userDocs, 'solo videos'));
+  } catch (error) {
+    logError('get-videos-folders error', error);
+    return [];
+  }
 });
 
 ipcMain.handle('get-videos', async (event, subfolder) => {
-  const baseDir = path.join(userDocs, 'solo videos');
-  const dir = subfolder ? path.join(baseDir, subfolder) : baseDir;
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  const files = fs.readdirSync(dir);
-
-  const filesWithStats = files
-    .filter(f => /\.(mp4|webm|mov|avi|mkv)$/i.test(f))
-    .map(f => {
-      const fullPath = path.join(dir, f);
-      try {
-        const stat = fs.statSync(fullPath);
-        return { file: f, mtime: stat.mtimeMs };
-      } catch (e) {
-        return { file: f, mtime: 0 };
-      }
-    });
-
-  // Sort descending by mtime (newest first)
-  filesWithStats.sort((a, b) => b.mtime - a.mtime);
-
-  const videos = filesWithStats.map(obj => {
-    const srcPath = subfolder ? path.join(baseDir, subfolder, obj.file) : path.join(baseDir, obj.file);
-    return { src: 'file:///' + srcPath.replace(/\\/g, '/'), name: obj.file };
-  });
-  return videos;
+  try {
+    return await listMediaFiles(
+      path.join(userDocs, 'solo videos'),
+      subfolder,
+      VIDEO_EXTENSIONS,
+      item => ({
+        src: pathToFileURL(item.fullPath).toString(),
+        name: item.file
+      })
+    );
+  } catch (error) {
+    logError('get-videos error', error);
+    return [];
+  }
 });
 
 ipcMain.on('open-media-folder', () => {
   if (userDocs) shell.openPath(userDocs);
 });
 
+ipcMain.handle('get-logo', () => getLogoPayload());
+
 // ── Cambiar Logo ──
-// Abre un diálogo para seleccionar un SVG/PNG y lo copia como logo.svg en la carpeta de la app
+// Guarda el logo en userData para que funcione tambien en la app instalada.
 ipcMain.handle('change-logo', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
     title: 'Elige tu nuevo logo',
@@ -373,9 +472,32 @@ ipcMain.handle('change-logo', async () => {
   if (canceled || !filePaths.length) return { success: false };
   try {
     const src = filePaths[0];
-    const dest = path.join(__dirname, 'logo.svg');
-    fs.copyFileSync(src, dest);
-    return { success: true, path: dest };
+    const ext = path.extname(src).toLowerCase();
+    if (!LOGO_EXTENSIONS.has(ext)) {
+      throw new Error('Formato de logo no soportado');
+    }
+
+    const logoDir = path.join(app.getPath('userData'), 'branding');
+    await ensureDir(logoDir);
+    const dest = path.join(logoDir, `custom-logo${ext}`);
+    if (path.resolve(src) !== path.resolve(dest)) {
+      await fsp.copyFile(src, dest);
+    }
+
+    const oldFiles = await fsp.readdir(logoDir).catch(() => []);
+    await Promise.all(oldFiles
+      .filter(file => file.startsWith('custom-logo.') && path.join(logoDir, file) !== dest)
+      .map(file => fsp.unlink(path.join(logoDir, file)).catch(() => {})));
+
+    await fsp.writeFile(
+      getLogoConfigPath(),
+      JSON.stringify({ path: dest, updatedAt: new Date().toISOString() }, null, 2),
+      'utf8'
+    );
+
+    const payload = getLogoPayload();
+    broadcastLogoUpdated(payload);
+    return { success: true, ...payload };
   } catch (err) {
     logError('change-logo error', err);
     return { success: false, error: err.message };

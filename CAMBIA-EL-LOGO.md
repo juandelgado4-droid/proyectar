@@ -1,43 +1,40 @@
-# 🎨 ¿Cómo cambiar el logo de la app?
+# Como cambiar el logo de la app
 
----
+La forma recomendada es hacerlo desde la app:
 
-## ➡️ Archivo a reemplazar: `logo.svg`
+1. Abre Aurora Letras.
+2. Pasa el mouse sobre el logo de la esquina.
+3. Haz clic en "Cambiar Logo".
+4. Elige una imagen en formato SVG, PNG, JPG, WEBP o ICO.
 
-**El logo se controla con UN SOLO archivo:**
+La app guarda una copia del logo en la carpeta de datos del usuario, asi que el cambio se mantiene aunque reinicies la app y tambien funciona en la version instalada.
 
+## Logo por defecto
+
+Si quieres cambiar el logo por defecto del proyecto antes de compilar una nueva version, reemplaza:
+
+```text
+logo.svg
 ```
-📁 proyectar/
-├── 📄 branding.js      ← Nombre de la app, título de ventana
-├── 🖼️ logo.svg         ← ¡ESTE ES EL LOGO! Reemplaza este archivo
-└── ...
+
+El icono del instalador se toma desde:
+
+```text
+logo.png
 ```
 
----
+Despues de cambiar el icono del instalador, vuelve a compilar con:
 
-## Pasos
+```bash
+npm run build
+```
 
-1. **Crea o consigue tu logo** en formato `.svg`
-2. **Renómbralo** a `logo.svg`
-3. **Cópialo aquí** (reemplaza el existente):
-   - `C:\ruta-de-instalación\logo.svg`
-4. **Reinicia la app** — el logo aparecerá en:
-   - Marca de agua de la pantalla (esquina inferior derecha)
-   - Ícono de la ventana (barra de título)
-   - Ícono del instalador/desinstalador
+## Nombre de la app
 
----
-
-## ¿También quieres cambiar el nombre?
-
-Edita `branding.js` y modifica:
+Para cambiar el nombre, edita `branding.js`:
 
 ```js
-appName:     'Aurora Letras',   // ← Nombre de la app
-title:       'Aurora Letras',   // ← Título interno
-windowTitle: 'Aurora Letras - Proyector de Letras',  // ← Barra de título
+appName: 'Aurora Letras',
+title: 'Aurora Letras',
+windowTitle: 'Aurora Letras - Proyector de Letras'
 ```
-
----
-
-> **Tip:** El SVG debe ser cuadrado (viewBox 0 0 512 512) para que se vea bien como ícono de ventana.
