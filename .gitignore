@@ -1,5 +1,8 @@
 dist/win-unpacked/
-release/
+# Los empaquetados locales se ignoran; los instaladores historicos se archivan por version.
+release/*
+!release/1.5.0/
+!release/1.5.0/**
 node_modules/
 *.log
 builder-debug.yml
