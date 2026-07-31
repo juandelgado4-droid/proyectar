@@ -549,6 +549,71 @@ ipcMain.handle('scrape-lyrics', async (event, artist, title) => {
   }
 });
 
+// Gemma 3 1B IPC Handlers
+ipcMain.handle('check-gemma-status', async () => {
+  const modelsDir = path.join(app.getPath('userData'), 'models');
+  const modelFile = path.join(modelsDir, 'gemma-3-1b-it-Q4_K_M.gguf');
+  const exists = fs.existsSync(modelFile);
+  return { ready: exists, path: modelFile };
+});
+
+ipcMain.handle('download-gemma-model', async (event) => {
+  const modelsDir = path.join(app.getPath('userData'), 'models');
+  if (!fs.existsSync(modelsDir)) {
+    fs.mkdirSync(modelsDir, { recursive: true });
+  }
+  const modelFile = path.join(modelsDir, 'gemma-3-1b-it-Q4_K_M.gguf');
+
+  // If file already exists, report ready
+  if (fs.existsSync(modelFile)) {
+    event.sender.send('gemma-download-progress', { percent: 100 });
+    return { success: true, path: modelFile };
+  }
+
+  const https = require('https');
+  const downloadUrl = 'https://huggingface.co/ggml-org/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf';
+
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(modelFile);
+    https.get(downloadUrl, (response) => {
+      if (response.statusCode === 302 || response.statusCode === 301) {
+        // Handle redirect
+        https.get(response.headers.location, (redRes) => {
+          const totalSize = parseInt(redRes.headers['content-length'], 10) || 1;
+          let downloaded = 0;
+          redRes.on('data', (chunk) => {
+            downloaded += chunk.length;
+            const percent = Math.min(100, Math.round((downloaded / totalSize) * 100));
+            event.sender.send('gemma-download-progress', { percent });
+          });
+          redRes.pipe(file);
+          file.on('finish', () => {
+            file.close(() => resolve({ success: true, path: modelFile }));
+          });
+        }).on('error', (err) => {
+          fs.unlink(modelFile, () => {});
+          reject(err);
+        });
+      } else {
+        const totalSize = parseInt(response.headers['content-length'], 10) || 1;
+        let downloaded = 0;
+        response.on('data', (chunk) => {
+          downloaded += chunk.length;
+          const percent = Math.min(100, Math.round((downloaded / totalSize) * 100));
+          event.sender.send('gemma-download-progress', { percent });
+        });
+        response.pipe(file);
+        file.on('finish', () => {
+          file.close(() => resolve({ success: true, path: modelFile }));
+        });
+      }
+    }).on('error', (err) => {
+      fs.unlink(modelFile, () => {});
+      reject(err);
+    });
+  });
+});
+
 app.whenReady().then(() => {
   // Initialize userDocs path
   userDocs = path.join(app.getPath('documents'), 'proyeccion');

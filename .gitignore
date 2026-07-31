@@ -7,3 +7,5 @@ node_modules/
 *.log
 builder-debug.yml
 fix.js
+
+dist/

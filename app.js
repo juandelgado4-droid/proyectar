@@ -500,7 +500,7 @@ async function handleMediaUpdate(data) {
 
     // Normal behavior: Change to a random background ONLY if we are not currently playing photos or videomusical
     if (currentBg !== 'fotos' && currentBg !== 'videomusical') {
-      const bgOptions = ['universo', 'flores', 'fuego', 'aurora', 'oceano', 'galaxia', 'vapor', 'magia', 'lluvia', 'nebulosa'];
+      const bgOptions = ['universo', 'escena-ia', 'flores', 'fuego', 'aurora', 'oceano', 'galaxia', 'vapor', 'magia', 'lluvia', 'nebulosa'];
       let nextBg = currentBg;
       while(nextBg === currentBg && bgOptions.length > 1) {
         nextBg = bgOptions[Math.floor(Math.random() * bgOptions.length)];
@@ -577,6 +577,14 @@ function displayLyricsData(title, parseResult) {
   lyricsContainer.scrollTop = 0;
   syncEngine.forceUpdate();
   console.log("Letra sincronizada mostrada (formato:", parseResult.format, "words:", parseResult.hasWordLevel, ")");
+
+  if (currentBg === 'escena-ia' && window.sceneEngine) {
+    if (typeof window.sceneEngine.loadSongAsync === 'function') {
+      window.sceneEngine.loadSongAsync(parseResult.lines, currentSongMeta);
+    } else {
+      window.sceneEngine.loadSong(parseResult.lines, currentSongMeta);
+    }
+  }
 }
 
 function displayPlainLyrics(title, lyrics) {
@@ -780,10 +788,36 @@ function switchBg(name) {
   }
 
   if (name === 'universo') {
+    // Dispose scene engine if it was using the same canvas
+    if (window.sceneEngine && window.sceneEngine._initialized) {
+      window.sceneEngine.dispose();
+    }
     bgCanvas.style.display = 'none';
     webgl.style.display = 'block';
     loopUniverso3D();
+  } else if (name === 'escena-ia') {
+    // Universo may have claimed the WebGL context — force re-init of Three.js state
+    isThreeInitialized = false;
+    bgCanvas.style.display = 'none';
+    webgl.style.display = 'block';
+    if (!window.sceneEngine) {
+      window.sceneEngine = new window.SceneEngine($('webgl-canvas'));
+    }
+    window.sceneEngine.init();
+    const lines = syncEngine.renderer.getLines();
+    if (lines && lines.length > 0) {
+      if (typeof window.sceneEngine.loadSongAsync === 'function') {
+        window.sceneEngine.loadSongAsync(lines, currentSongMeta);
+      } else {
+        window.sceneEngine.loadSong(lines, currentSongMeta);
+      }
+    }
+    loopEscenaIA();
   } else if (name !== 'videomusical') {
+    // Dispose scene engine if switching to a 2D background
+    if (window.sceneEngine && window.sceneEngine._initialized) {
+      window.sceneEngine.dispose();
+    }
     bgCanvas.style.display = 'block';
     webgl.style.display = 'none';
     const bgs = {
@@ -793,6 +827,23 @@ function switchBg(name) {
     if (bgs[name]) bgs[name]();
   }
 }
+
+function loopEscenaIA(now) {
+  if (currentBg !== 'escena-ia') return;
+  if (!shouldDrawBgFrame(now)) {
+    window._sceneIAFrame = requestAnimationFrame(loopEscenaIA);
+    return;
+  }
+  if (window.sceneEngine) {
+    window.sceneEngine.update(syncEngine.clock.getPosition());
+  }
+  window._sceneIAFrame = requestAnimationFrame(loopEscenaIA);
+}
+const origCancelThree = window._cancelThreeJS;
+window._cancelThreeJS = () => {
+  if (origCancelThree) origCancelThree();
+  cancelAnimationFrame(window._sceneIAFrame);
+};
 
 //    YOUTUBE VIDEO BACKGROUND   
 let yt_currentSearch = '';

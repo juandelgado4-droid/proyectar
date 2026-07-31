@@ -25,5 +25,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getLogo: () => ipcRenderer.invoke('get-logo'),
   changeLogo: () => ipcRenderer.invoke('change-logo'),
   onLogoUpdated: (callback) => ipcRenderer.on('logo-updated', (_e, data) => callback(data)),
-  getAppPath: () => ipcRenderer.invoke('get-app-path')
+  getAppPath: () => ipcRenderer.invoke('get-app-path'),
+  checkGemmaStatus: () => ipcRenderer.invoke('check-gemma-status'),
+  downloadGemmaModel: (onProgress) => {
+    ipcRenderer.on('gemma-download-progress', (_e, data) => onProgress(data));
+    return ipcRenderer.invoke('download-gemma-model');
+  }
 });
