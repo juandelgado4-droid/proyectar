@@ -259,6 +259,10 @@
         const endMs = nextLine ? nextLine.timeMs : startMs + 5000;
         const text = line.text;
 
+        const visualMotifs = global.SceneVisualLexicon
+          ? global.SceneVisualLexicon.extract(text)
+          : [];
+
         const analysis = this._analyzeBlock(text);
         const intensity = this._detectIntensity(text, analysis);
 
@@ -272,13 +276,29 @@
           secondaryScore: analysis.secondaryScore,
           intensity,
           keywords: analysis.keywords,
+          visualMotifs,
           rawScores: analysis.rawScores
         });
       }
 
+      const richVision = this._buildLocalVision(blocks);
+      const allMotifs = [...new Set(blocks.flatMap(block => block.visualMotifs || []))];
+      const inferredWorld = global.SceneVisualLexicon
+        ? global.SceneVisualLexicon.inferWorld(allMotifs)
+        : null;
+
+      if (inferredWorld) {
+        richVision.world = {
+          ...(richVision.world || {}),
+          type: inferredWorld
+        };
+      }
+
+      richVision.visualMotifs = allMotifs;
+
       return {
         blocks,
-        richVision: this._buildLocalVision(blocks),
+        richVision,
         isAIAnalyzed: false,
         analysisSource: 'local'
       };
@@ -299,7 +319,9 @@
         return scores;
       }, {});
       const emotion = Object.keys(dominant).sort((left, right) => dominant[right] - dominant[left])[0] || 'neutral';
-      const symbols = [...new Set(blocks.flatMap(block => block.keywords || []))].slice(0, 6);
+      const symbols = [...new Set(
+        blocks.flatMap(block => block.visualMotifs || [])
+      )].slice(0, 8);
       const night = /\b(noche|luna|estrellas|night|moon|stars)\b/.test(fullText);
       const winter = /\b(nieve|hielo|invierno|snow|ice|winter)\b/.test(fullText);
       const lightingPreset = emotion === 'anger' || emotion === 'energy' ? 'dramatic'

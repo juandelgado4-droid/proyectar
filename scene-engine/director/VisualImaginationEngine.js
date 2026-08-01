@@ -144,12 +144,13 @@
         lightingPreset: this._validLightingPreset(vision && vision.lighting && vision.lighting.preset),
         worldConcept: biome.id,
         composition: {
-          type: profile.composition,
+          type: biome.id === 'interior' ? 'room' : profile.composition,
           terrainType: biome.terrain,
           sky: biome.sky,
           focalAxis: rng(10) > 0.5 ? 'left_to_right' : 'right_to_left',
           baseIdentity: `${primaryTheme}:${biome.id}`
         },
+        visualMotifs: vision && vision.visualMotifs ? vision.visualMotifs : [],
         persistentMotifs: vision && Array.isArray(vision.symbols) && vision.symbols.length ? vision.symbols.slice(0, 2) : [profile.motif],
         initialWorldState: { ...profile.state },
         worldEvolution: profile.evolution,

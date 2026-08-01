@@ -31,7 +31,7 @@
       const cameraConfig = this._buildCamera(dramaticPurpose, block, songVision, previous);
       const lighting = this._buildLighting(emotion, primaryTheme, block.arcPosition, intensity, biome, songVision.lightingPreset);
       const weather = this._buildWeather(emotion, primaryTheme, intensity);
-      const worldState = this._buildWorldState(songVision, emotion, block.arcPosition, intensity);
+      const worldState = this._buildWorldState(songVision, emotion, block.arcPosition, intensity, symbolicProps);
       const characters = this._buildCharacters(songVision, dramaticPurpose, emotion, block.arcPosition, intensity, previous);
 
       // Consume director notes and rich intent if provided by Gemma 3 1B
@@ -104,14 +104,49 @@
     }
 
     _buildSymbolSet(mainSymbol, songVision, block, narrativeMemory) {
+      const local = Array.isArray(block.visualMotifs) ? block.visualMotifs : [];
+      const globalMotifs = songVision.richVision && Array.isArray(songVision.richVision.visualMotifs)
+        ? songVision.richVision.visualMotifs
+        : [];
+      const persistent = songVision.persistentMotifs || [];
+      const prior = narrativeMemory && narrativeMemory.getRecent
+        ? narrativeMemory.getRecent(2)
+        : [];
+      const recalled = prior
+        .flatMap(entry => entry.details && entry.details.symbolicProps || [])
+        .slice(0, 1);
+
+      const concrete = [...new Set([...local, ...globalMotifs])];
+      const translated = this._translateMotifs(concrete);
+
+      // Si hay objetos concretos, se priorizan y se omiten cristales abstractos.
+      if (translated.length > 0) return translated.slice(0, 5);
+
       const ecosystem = global.SceneSymbolEcology
         ? global.SceneSymbolEcology.getEcosystem(mainSymbol, songVision.seed + block.startMs)
-        : ['glowing_crystals'];
-      const persistent = songVision.persistentMotifs || [];
-      const prior = narrativeMemory && narrativeMemory.getRecent ? narrativeMemory.getRecent(2) : [];
-      const recalled = prior.flatMap(entry => entry.details && entry.details.symbolicProps || []).slice(0, 1);
-      const local = Array.isArray(block.keywords) ? block.keywords : [];
-      return [...new Set([...local, ...persistent, ...recalled, ...ecosystem])].slice(0, 4);
+        : [];
+
+      return [...new Set([...persistent, ...recalled, ...ecosystem])]
+        .filter(symbol => symbol !== 'glowing_crystals' && symbol !== 'shimmering_motes')
+        .slice(0, 4);
+    }
+
+    _translateMotifs(motifs) {
+      const map = {
+        dog: 'dog',
+        home: 'home_room',
+        kitchen: 'kitchen_table',
+        food: 'food_bowl',
+        return_home: 'open_door',
+        threat: 'knives',
+        memory: 'photo_frame',
+        bed: 'bed',
+        window: 'window',
+        street: 'street_lamp',
+        sea: 'waves',
+        fire: 'fire_brazier'
+      };
+      return motifs.map(motif => map[motif]).filter(Boolean);
     }
 
     _buildCamera(purpose, block, songVision, previous) {
@@ -198,9 +233,16 @@
       return [{ type: type === 'shimmering_motes' ? 'dust' : type, intensity, depth: emotion === 'sad' ? 'midground' : 'foreground' }];
     }
 
-    _buildWorldState(songVision, emotion, arcPosition, intensity) {
+    _buildWorldState(songVision, emotion, arcPosition, intensity, symbolicProps = []) {
       const base = songVision.initialWorldState || {};
       const state = { ...base };
+      const has = value => symbolicProps.includes(value);
+
+      if (has('dog') || has('photo_frame')) state.intimacy = Math.min(1, (state.intimacy || 0.5) + 0.3);
+      if (has('home_room') || has('kitchen_table')) state.life = Math.min(1, (state.life || 0.5) + 0.15);
+      if (has('knives')) state.chaos = Math.min(1, (state.chaos || 0.2) + 0.28);
+      if (has('open_door')) state.hope = Math.min(1, (state.hope || 0.5) + 0.16);
+
       if (emotion === 'sad' || emotion === 'dark') {
         state.decay = Math.min(1, (state.decay || 0.2) + 0.2 * intensity);
         state.life = Math.max(0, (state.life || 0.6) - 0.18 * intensity);
@@ -225,13 +267,18 @@
     }
 
     _buildCharacters(songVision, purpose, emotion, arcPosition, intensity, previous) {
-      const relationship = songVision.cast && songVision.cast[0] && songVision.cast[0].style || 'reflective';
+      const motifs = songVision.visualMotifs || [];
+      const cast = [...(songVision.cast || [])];
+      if (motifs.includes('dog') && !cast.some(actor => actor.id === 'dog_1')) {
+        cast.push({ id: 'dog_1', role: 'animal_companion', species: 'animal', style: 'loyal' });
+      }
+      const relationship = cast[0] && cast[0].style || 'reflective';
       const behavior = purpose === 'intimacy' ? 'approach'
         : purpose === 'isolation' ? 'withdraw'
         : purpose === 'power' || purpose === 'climax' ? 'confront'
         : arcPosition === 'resolution' ? 'release' : 'observe';
       return {
-        cast: songVision.cast || [],
+        cast,
         relationship,
         behavior,
         emotion,

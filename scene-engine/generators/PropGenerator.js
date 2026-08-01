@@ -37,14 +37,100 @@
       for (let i = 0; i < symbolicProps.length; i++) {
         const symbol = symbolicProps[i];
 
-        if (symbol === 'glowing_crystals' || symbol === 'shimmering_motes' || symbol === 'echoing_lights' || symbol === 'drifting_sparks') {
-          const crystalGeo = assets.getGeometry('propCrystal', () => new THREE.OctahedronGeometry(3, 0));
-          const crystalMat = assets.getMaterial('propCrystalMat', () => new THREE.MeshBasicMaterial({ color: 0x8eeaff, wireframe: true, transparent: true, opacity: 0.88 }));
+        if (symbol === 'dog') {
+          const bodyMat = assets.getMaterial('propDogBody', () => new THREE.MeshStandardMaterial({ color: 0x6b3f27, roughness: 0.9 }));
+          const darkMat = assets.getMaterial('propDogDark', () => new THREE.MeshStandardMaterial({ color: 0x17120f }));
+          const body = new THREE.Mesh(new THREE.SphereGeometry(4.8, 12, 8), bodyMat);
+          body.scale.set(1.5, 0.85, 0.75);
+          place(body, i * 10, { x: -8, y: 4.5, z: -18 });
 
-          for (let j = 0; j < 8; j++) {
-            const mesh = new THREE.Mesh(crystalGeo, crystalMat);
-            place(mesh, i * 11 + j, { float: true, radius: 62 });
+          const head = new THREE.Mesh(new THREE.SphereGeometry(3.4, 12, 8), bodyMat);
+          head.position.set(-3.2, 7, -18);
+          group.add(head);
+
+          for (const side of [-1, 1]) {
+            const ear = new THREE.Mesh(new THREE.ConeGeometry(1.2, 3.4, 5), darkMat);
+            ear.position.set(-4.0, 9.2, -18 + side * 1.8);
+            ear.rotation.z = side * 0.45;
+            group.add(ear);
           }
+
+          const nose = new THREE.Mesh(new THREE.SphereGeometry(0.7, 8, 6), darkMat);
+          nose.position.set(-6.0, 7.0, -18);
+          group.add(nose);
+
+        } else if (symbol === 'home_room') {
+          const wallMat = assets.getMaterial('propHomeWall', () => new THREE.MeshStandardMaterial({ color: 0x654936, roughness: 0.95 }));
+          const wall = new THREE.Mesh(new THREE.BoxGeometry(100, 48, 3), wallMat);
+          wall.position.set(0, 19, -100);
+          group.add(wall);
+
+          const roof = new THREE.Mesh(new THREE.ConeGeometry(72, 32, 4), wallMat);
+          roof.rotation.y = Math.PI / 4;
+          roof.position.set(0, 59, -100);
+          group.add(roof);
+
+        } else if (symbol === 'kitchen_table') {
+          const mat = assets.getMaterial('propTable', () => new THREE.MeshStandardMaterial({ color: 0x59381f, roughness: 0.9 }));
+          const top = new THREE.Mesh(new THREE.BoxGeometry(34, 2.5, 18), mat);
+          top.position.set(0, 9, -22);
+          group.add(top);
+          for (const x of [-13, 13]) for (const z of [-6, 6]) {
+            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, 9, 8), mat);
+            leg.position.set(x, 4, -22 + z);
+            group.add(leg);
+          }
+
+        } else if (symbol === 'food_bowl') {
+          const bowlMat = assets.getMaterial('propBowl', () => new THREE.MeshStandardMaterial({ color: 0xb9c2c8, roughness: 0.45 }));
+          const foodMat = assets.getMaterial('propFood', () => new THREE.MeshStandardMaterial({ color: 0x8d542d, roughness: 0.9 }));
+          const bowl = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 2.5, 1.5, 16), bowlMat);
+          bowl.position.set(-8, 11, -22);
+          group.add(bowl);
+          const food = new THREE.Mesh(new THREE.SphereGeometry(2.2, 10, 6), foodMat);
+          food.position.set(-8, 12, -22);
+          group.add(food);
+
+        } else if (symbol === 'open_door') {
+          const mat = assets.getMaterial('propDoor', () => new THREE.MeshStandardMaterial({ color: 0x271d1a, roughness: 0.85 }));
+          const frame = new THREE.Mesh(new THREE.BoxGeometry(18, 38, 3), mat);
+          frame.position.set(45, 14, -96);
+          group.add(frame);
+          const light = new THREE.MeshBasicMaterial({ color: 0xffc77a });
+          const opening = new THREE.Mesh(new THREE.PlaneGeometry(12, 32), light);
+          opening.position.set(45, 14, -94);
+          group.add(opening);
+
+        } else if (symbol === 'knives') {
+          const mat = assets.getMaterial('propKnife', () => new THREE.MeshStandardMaterial({ color: 0xcbd5df, metalness: 0.8, roughness: 0.25 }));
+          for (let j = 0; j < 3; j++) {
+            const knife = new THREE.Mesh(new THREE.BoxGeometry(0.7, 12, 1.4), mat);
+            knife.position.set(-22 + j * 4, 10, -40);
+            knife.rotation.z = (j - 1) * 0.35;
+            group.add(knife);
+          }
+
+        } else if (symbol === 'photo_frame') {
+          const frameMat = assets.getMaterial('propPhotoFrame', () => new THREE.MeshStandardMaterial({ color: 0x9f7b42, roughness: 0.55 }));
+          const frame = new THREE.Mesh(new THREE.BoxGeometry(7, 9, 1), frameMat);
+          frame.position.set(18, 15, -45);
+          group.add(frame);
+
+        } else if (symbol === 'bed') {
+          const mat = assets.getMaterial('propBed', () => new THREE.MeshStandardMaterial({ color: 0x4a5870, roughness: 0.9 }));
+          const bed = new THREE.Mesh(new THREE.BoxGeometry(32, 5, 13), mat);
+          bed.position.set(20, 1, -42);
+          group.add(bed);
+
+        } else if (symbol === 'window') {
+          const mat = assets.getMaterial('propWindow', () => new THREE.MeshStandardMaterial({ color: 0x86a9c4, emissive: 0x182a43, emissiveIntensity: 0.5 }));
+          const window = new THREE.Mesh(new THREE.BoxGeometry(24, 20, 1), mat);
+          window.position.set(-28, 25, -98);
+          group.add(window);
+
+        } else if (symbol === 'glowing_crystals' || symbol === 'shimmering_motes' || symbol === 'echoing_lights' || symbol === 'drifting_sparks') {
+          // Ignorar símbolos abstractos de fallback para mantener el realismo narrativo
+          continue;
         } else if (symbol === 'candles' || symbol === 'single_candle') {
           const candleGeo = assets.getGeometry('propCandle', () => new THREE.CylinderGeometry(0.5, 0.5, 4, 8));
           const candleMat = assets.getMaterial('propCandleMat', () => new THREE.MeshBasicMaterial({ color: 0xffbd5e }));

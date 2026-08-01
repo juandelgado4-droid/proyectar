@@ -26,7 +26,7 @@
       const cast = characterSpec.cast && characterSpec.cast.length ? characterSpec.cast : [
         { id: 'actor_1', role: 'protagonist', species: 'human', style: 'reflective' }
       ];
-      const classes = { human: global.HumanCharacter, skeleton: global.SkeletonCharacter, robot: global.RobotCharacter };
+      const classes = { human: global.HumanCharacter, skeleton: global.SkeletonCharacter, robot: global.RobotCharacter, animal: global.AnimalCharacter };
 
       cast.forEach((actor, index) => {
         const CharacterType = classes[actor.species] || global.HumanCharacter;
@@ -45,6 +45,15 @@
 
     applyDirection(direction = {}, forces = {}, deltaTime = 0.016, progress = 0) {
       this._direction = { ...this._direction, ...direction };
+
+      for (const character of this.activeCharacters) {
+        if (character.role === 'animal_companion') {
+          const protagonist = this.byRole.get('protagonist') || this.activeCharacters[0];
+          const p = protagonist ? protagonist.getFocusPoint() : new THREE.Vector3();
+          character.setTargetPosition(p.x - 5, 0, p.z - 2);
+        }
+      }
+
       const protagonist = this.byRole.get('protagonist') || this.activeCharacters[0];
       const companion = this.byRole.get('companion') || this.activeCharacters[1];
       if (!protagonist) return;
