@@ -101,7 +101,8 @@
       // Spawn new active particles per frame
       for (const [typeName, config] of this.activeTypes) {
         const typeImpl = this.registeredTypes.get(typeName);
-        if (typeImpl && Math.random() < 0.6) {
+        const spawnChance = 0.18 + Math.min(0.72, (config.intensity || 0.5) * 0.62);
+        if (typeImpl && Math.random() < spawnChance) {
           const p = this._getInactiveParticle();
           if (p) typeImpl.spawn(p, config);
         }

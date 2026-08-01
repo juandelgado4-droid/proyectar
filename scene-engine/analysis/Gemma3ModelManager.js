@@ -10,7 +10,7 @@
       this.modelDetails = {
         name: 'Gemma 3 1B (Instruct)',
         filename: 'gemma-3-1b-it-Q4_K_M.gguf',
-        sizeMB: ~950,
+        sizeMB: 950,
         repoUrl: 'https://huggingface.co/ggml-org/gemma-3-1b-it-GGUF',
         downloadUrl: 'https://huggingface.co/ggml-org/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf'
       };

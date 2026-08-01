@@ -8,14 +8,15 @@
 
   class Gemma3LyricCache {
     constructor() {
-      this.prefix = 'aurora_gemma3_cache_v1_';
+      this.prefix = 'aurora_gemma3_cache_v2_';
     }
 
     /**
-     * Generate deterministic hash key for artist + title + lyrics length.
+     * Generate a deterministic key from metadata and actual lyric content.
      */
-    generateKey(artist = '', title = '', lines = []) {
-      const raw = `${(artist || '').trim().toLowerCase()}_${(title || '').trim().toLowerCase()}_${lines.length}`;
+    generateKey(artist = '', title = '', lines = [], modelName = '') {
+      const lyricFingerprint = (lines || []).map(line => `${line.timeMs || 0}:${line.text || ''}`).join('|');
+      const raw = `${(artist || '').trim().toLowerCase()}_${(title || '').trim().toLowerCase()}_${(modelName || '').trim().toLowerCase()}_${lyricFingerprint}`;
       let hash = 0;
       for (let i = 0; i < raw.length; i++) {
         hash = (hash << 5) - hash + raw.charCodeAt(i);
@@ -28,8 +29,8 @@
      * Get cached SongVision / Analysis result.
      * @returns {Object|null}
      */
-    get(artist, title, lines) {
-      const key = this.generateKey(artist, title, lines);
+    get(artist, title, lines, modelName = '') {
+      const key = this.generateKey(artist, title, lines, modelName);
       try {
         const cached = localStorage.getItem(key);
         if (cached) {
@@ -46,13 +47,14 @@
     /**
      * Store analysis result in persistent cache.
      */
-    set(artist, title, lines, data) {
-      const key = this.generateKey(artist, title, lines);
+    set(artist, title, lines, data, modelName = '') {
+      const key = this.generateKey(artist, title, lines, modelName);
       try {
         const payload = {
           timestamp: Date.now(),
           artist,
           title,
+          modelName,
           data
         };
         localStorage.setItem(key, JSON.stringify(payload));

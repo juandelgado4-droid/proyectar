@@ -26,9 +26,10 @@
       const mainSymbol = this._resolveSymbol(primaryTheme, emotion);
       const symbolicProps = this._buildSymbolSet(mainSymbol, songVision, block, narrativeMemory);
       const composition = songVision.composition || {};
+      const biome = this._resolveBiome(songVision, block, primaryTheme);
 
       const cameraConfig = this._buildCamera(dramaticPurpose, block, songVision, previous);
-      const lighting = this._buildLighting(emotion, primaryTheme, block.arcPosition, intensity);
+      const lighting = this._buildLighting(emotion, primaryTheme, block.arcPosition, intensity, biome, songVision.lightingPreset);
       const weather = this._buildWeather(emotion, primaryTheme, intensity);
       const worldState = this._buildWorldState(songVision, emotion, block.arcPosition, intensity);
       const characters = this._buildCharacters(songVision, dramaticPurpose, emotion, block.arcPosition, intensity, previous);
@@ -39,6 +40,8 @@
       return {
         startMs: block.startMs,
         durationMs: Math.max(1000, block.endMs - block.startMs),
+        biome,
+        actIndex: block.actIndex != null ? block.actIndex : 0,
         dramaticPurpose,
         emotion,
         intensity,
@@ -51,7 +54,7 @@
         world: {
           baseIdentity: composition.baseIdentity,
           composition: composition.type,
-          terrainType: composition.terrainType,
+          terrainType: biome && biome.terrain || composition.terrainType,
           terrainColor: lighting.groundColor,
           sky: composition.sky,
           focalAxis: composition.focalAxis,
@@ -107,7 +110,8 @@
       const persistent = songVision.persistentMotifs || [];
       const prior = narrativeMemory && narrativeMemory.getRecent ? narrativeMemory.getRecent(2) : [];
       const recalled = prior.flatMap(entry => entry.details && entry.details.symbolicProps || []).slice(0, 1);
-      return [...new Set([...persistent, ...recalled, ...ecosystem])].slice(0, 4);
+      const local = Array.isArray(block.keywords) ? block.keywords : [];
+      return [...new Set([...local, ...persistent, ...recalled, ...ecosystem])].slice(0, 4);
     }
 
     _buildCamera(purpose, block, songVision, previous) {
@@ -124,12 +128,16 @@
         realization: 'dolly_out', contemplation: 'lateral_track', transition: 'lateral_track', narrative_flow: 'follow'
       };
       const changedEmotion = previous && previous.details && previous.details.emotion !== block.emotion;
+      const cameraStyle = songVision.cameraStyle;
+      const styleMovement = {
+        slow_follow: 'follow', intimate_dolly: 'dolly_in', orbit: 'arc', crane: 'crane_rise', still: 'static_breath', kinetic: 'lateral_track'
+      };
       return {
         shot: shotByPurpose[purpose] || 'MEDIUM',
         distance: language.distance,
         height: language.height,
         fov: language.fov,
-        movement: movementByPurpose[purpose] || 'follow',
+        movement: styleMovement[cameraStyle] || movementByPurpose[purpose] || 'follow',
         targetRole: purpose === 'intimacy' ? 'companion' : 'protagonist',
         orbitDirection: changedEmotion ? -1 : 1,
         breath: purpose === 'isolation' || purpose === 'intimacy' ? 0.45 : 0.16,
@@ -139,13 +147,16 @@
       };
     }
 
-    _buildLighting(emotion, theme, arcPosition, intensity) {
+    _buildLighting(emotion, theme, arcPosition, intensity, biome, requestedPreset) {
       const sad = emotion === 'sad' || emotion === 'dark';
       const warm = emotion === 'love' || emotion === 'celebration' || theme === 'transcendent_hope';
       const violent = emotion === 'anger' || emotion === 'energy' || theme === 'destructive_passion';
       const mysterious = theme === 'veiled_mystery' || emotion === 'nostalgia';
-      const preset = violent ? 'dramatic' : warm ? (arcPosition === 'resolution' ? 'sunrise' : 'golden_hour')
+      const inferredPreset = violent ? 'dramatic' : warm ? (arcPosition === 'resolution' ? 'sunrise' : 'golden_hour')
         : sad ? 'moonlight' : mysterious ? 'cold' : 'warm';
+      const preset = requestedPreset || inferredPreset;
+      const biomeFog = biome && biome.fog;
+      const biomeGround = biome && biome.ground;
       return {
         preset,
         keyColor: violent ? 0xff6a45 : warm ? 0xffc07a : sad ? 0x7894c8 : 0xa8c9ff,
@@ -153,12 +164,19 @@
         fillIntensity: sad ? 0.08 : 0.18 + intensity * 0.18,
         rimIntensity: 0.45 + intensity * 0.75,
         rimColor: warm ? 0xffd3a1 : 0x8fb7ff,
-        fogColor: warm ? 0x51311b : sad ? 0x101827 : 0x18202d,
-        fogDensity: sad || mysterious ? 0.007 + intensity * 0.007 : 0.002 + (1 - intensity) * 0.002,
+        fogColor: biomeFog ? biomeFog.color : (warm ? 0x51311b : sad ? 0x101827 : 0x18202d),
+        fogDensity: (biomeFog ? biomeFog.density : 0.004) * (sad || mysterious ? 1.8 + intensity : 0.9),
         shafts: warm || theme === 'epic_ascension' || theme === 'transcendent_hope',
         silhouette: sad || violent || mysterious,
-        groundColor: warm ? 0x25331b : sad ? 0x101d1c : 0x1c2630
+        groundColor: biomeGround ? biomeGround.base : (warm ? 0x25331b : sad ? 0x101d1c : 0x1c2630)
       };
+    }
+
+    _resolveBiome(songVision, block, theme) {
+      if (!block.worldType || !global.SceneBiomeLibrary) return songVision.biome;
+      const resolved = global.SceneBiomeLibrary.resolve(block.worldType, theme);
+      const visionWorld = songVision.richVision && songVision.richVision.world || {};
+      return global.SceneBiomeLibrary.applyModifiers(resolved.biome, visionWorld.season, visionWorld.time);
     }
 
     _buildWeather(emotion, theme, intensity) {

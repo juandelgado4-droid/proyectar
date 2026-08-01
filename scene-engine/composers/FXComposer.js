@@ -34,12 +34,13 @@
     applyWorldState(forces, fxSpec = {}, deltaTime = 0.016) {
       const state = forces.globalState || {};
       const local = forces.localState || {};
+      const audioHigh = Math.max(0, Math.min(1, local.audioHigh || 0));
       const weatherType = fxSpec.weatherType || this._fxSpec.weatherType || 'clear';
       const weatherIntensity = Math.max(fxSpec.intensity || 0, local.moisture || 0) * (0.45 + (state.decay || 0) * 0.55);
       if (this.weatherSystem) this.weatherSystem.setWeather(weatherType, weatherIntensity);
       if (this.particlePool) {
         for (const config of fxSpec.particles || []) {
-          this.particlePool.activate(config.type, { ...config, intensity: Math.max(config.intensity || 0.3, state.hope || 0.2) });
+          this.particlePool.activate(config.type, { ...config, intensity: Math.min(1, Math.max(config.intensity || 0.3, state.hope || 0.2) + audioHigh * 0.38) });
         }
       }
     }

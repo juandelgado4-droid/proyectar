@@ -104,10 +104,11 @@
       const local = forces.localState || {};
       const base = this._targetRig;
       const light = Math.max(0.12, state.light || 0.5);
-      base.keyIntensity = Math.max(0.12, (rig.keyIntensity || base.keyIntensity) * (0.38 + light * 0.9));
+      const audioMid = Math.max(0, Math.min(1, local.audioMid || 0));
+      base.keyIntensity = Math.max(0.12, (rig.keyIntensity || base.keyIntensity) * (0.38 + light * 0.9 + audioMid * 0.32));
       base.ambientIntensity = Math.max(0.035, (rig.fillIntensity || base.ambientIntensity) * (0.24 + light * 0.58));
       base.fillIntensity = Math.max(0.02, (rig.fillIntensity || base.fillIntensity) * (0.3 + (state.hope || 0.4) * 0.6));
-      base.rimIntensity = Math.max(0.08, (rig.rimIntensity || base.rimIntensity) * (0.45 + (forces.lightExpansion || light) * 0.72));
+      base.rimIntensity = Math.max(0.08, (rig.rimIntensity || base.rimIntensity) * (0.45 + (forces.lightExpansion || light) * 0.72 + audioMid * 0.18));
       base.fogDensity = Math.max(0.001, Math.min(0.018, Math.max(rig.fogDensity || 0, local.fogDensity || 0.003)));
       this._applyRig(1 - Math.exp(-deltaTime * 1.8));
     }

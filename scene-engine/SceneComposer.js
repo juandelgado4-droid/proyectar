@@ -28,17 +28,26 @@
     composeFromScript(visualScript, seed = 1) {
       if (!visualScript) return;
 
-      const worldSpec = visualScript.world || {
+      const inheritedBiome = visualScript.biome || (visualScript.world && visualScript.world.biome) || null;
+      const worldSpec = {
+        ...(visualScript.world || {
         terrainType: visualScript.worldConcept === 'ocean' ? 'lake' : 'hills',
         composition: visualScript.composition,
         terrainColor: visualScript.terrainColor
+        }),
+        biome: inheritedBiome
       };
-      const stageSpec = visualScript.stage || {
+      const stageSpec = {
+        ...(visualScript.stage || {
         artStyle: visualScript.artStyle,
         symbolicProps: visualScript.symbolicProps,
         composition: visualScript.composition
+        }),
+        biome: inheritedBiome
       };
       const baseSignature = JSON.stringify({
+        biome: inheritedBiome && inheritedBiome.id,
+        act: visualScript.actIndex != null ? visualScript.actIndex : 0,
         world: worldSpec.baseIdentity || worldSpec.composition || worldSpec.terrainType,
         style: visualScript.artStyle,
         cast: (visualScript.characters && visualScript.characters.cast || []).map(actor => actor.id)
@@ -46,9 +55,10 @@
 
       // The setting is built once per narrative world. Subsequent blocks animate it.
       if (baseSignature !== this._baseSignature) {
-        this.worldComposer.compose(worldSpec, seed);
-        this.stageComposer.compose(stageSpec, seed);
-        this.characterComposer.compose(visualScript.characters || { cast: visualScript.cast }, seed);
+        const actSeed = seed + ((visualScript.actIndex || 0) * 7919);
+        this.worldComposer.compose(worldSpec, actSeed);
+        this.stageComposer.compose(stageSpec, actSeed);
+        this.characterComposer.compose(visualScript.characters || { cast: visualScript.cast }, actSeed);
         this._baseSignature = baseSignature;
       } else if (this.stageComposer.applyScript) {
         // Symbolic props may evolve while the location itself remains recognisable.

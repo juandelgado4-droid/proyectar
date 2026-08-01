@@ -1,6 +1,6 @@
 # Aurora Letras
 
-Version actual del codigo e instalador: **1.5.1**.
+Version actual del codigo e instalador: **1.5.3**.
 
 Aplicación de escritorio para **proyección de letras** en Windows, con instalador listo para usar.
 
@@ -11,7 +11,7 @@ Aplicación de escritorio para **proyección de letras** en Windows, con instala
 <p align="center">
   <a href="./dist/"><strong>📁 Abrir carpeta dist</strong></a>
   ·
-  <a href="./dist/Aurora%20Letras%20Setup%201.5.1.exe"><strong>⬇️ Descargar instalador (.exe)</strong></a>
+  <a href="./dist/Aurora%20Letras%20Setup%201.5.3.exe"><strong>⬇️ Descargar instalador (.exe)</strong></a>
 </p>
 
 ---
@@ -19,7 +19,7 @@ Aplicación de escritorio para **proyección de letras** en Windows, con instala
 ## 🚀 Instalación (usuario final)
 
 1. Entra a la carpeta **[dist](./dist/)**.
-2. Descarga **[Aurora Letras Setup 1.5.1.exe](./dist/Aurora%20Letras%20Setup%201.5.1.exe)**.
+2. Descarga **[Aurora Letras Setup 1.5.3.exe](./dist/Aurora%20Letras%20Setup%201.5.3.exe)**.
 3. Ejecuta el instalador y completa el asistente.
 4. Abre **Aurora Letras** desde el acceso directo.
 
@@ -35,6 +35,15 @@ Aplicación de escritorio para **proyección de letras** en Windows, con instala
 - **Cambio de logo interactivo**: Ahora puedes cambiar el logo directamente desde la aplicación sin tocar código.
 - Modo Fotos optimizado para carpetas grandes y archivos invalidos.
 - Instalador de Windows listo para distribuir.
+- **Escena IA narrativa:** 12 biomas procedurales, vegetacion por especie, arquitectura contextual y detalle de suelo por escenario.
+- Postprocesado cinematografico integrado: bloom sutil, vignette y profundidad de campo enfocada en el personaje.
+- Modo **Audio reactivo** opcional para modular terreno, luces, particulas y postprocesado desde el audio compartido.
+
+## Escena IA local
+
+No necesitas Ollama, modelos ni conexion a Internet. Aurora analiza las emociones e imagenes concretas de la letra localmente y escoge el bioma, la luz, el encuadre y los simbolos sin salir de la app. La integracion con un modelo local queda disponible solo para una futura opcion avanzada; no se activa por defecto.
+
+En **Escena IA**, el boton **Audio reactivo** abre el selector del sistema. Comparte la salida de audio del reproductor y activa "Compartir audio del sistema"; es opcional y la sincronizacion de letras sigue funcionando sin ello.
 
 ---
 
@@ -73,7 +82,7 @@ Si quieres ejecutar o compilar el proyecto localmente:
 ## 📦 Descargas
 
 - Carpeta de distribución: [dist](./dist/)
-- Instalador directo: [Aurora Letras Setup 1.5.1.exe](./dist/Aurora%20Letras%20Setup%201.5.1.exe)
+- Instalador directo: [Aurora Letras Setup 1.5.3.exe](./dist/Aurora%20Letras%20Setup%201.5.3.exe)
 - Versiones anteriores: [release](./release/)
 
 ---

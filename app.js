@@ -709,6 +709,35 @@ async function prefetchArtistTracks(artist, currentTitle) {
 // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
 bgSelector.addEventListener('change', () => switchBg(bgSelector.value));
 
+const audioReactiveBtn = $('audio-reactive-btn');
+if (audioReactiveBtn) {
+  audioReactiveBtn.addEventListener('click', async () => {
+    const engine = window.sceneEngine;
+    if (!engine || !engine._initialized) {
+      alert('Activa primero el fondo "Escena IA".');
+      return;
+    }
+    const status = engine.getAudioReactiveStatus ? engine.getAudioReactiveStatus() : { enabled: false };
+    if (status.enabled) {
+      engine.disableAudioReactive();
+      audioReactiveBtn.textContent = 'Audio reactivo';
+      audioReactiveBtn.classList.remove('active');
+      return;
+    }
+    try {
+      audioReactiveBtn.textContent = 'Elige audio...';
+      await engine.enableAudioReactive();
+      audioReactiveBtn.textContent = 'Audio reactivo: ON';
+      audioReactiveBtn.classList.add('active');
+    } catch (error) {
+      console.warn('[Audio reactive]', error);
+      alert(error && error.message ? error.message : 'No se pudo activar el audio reactivo.');
+      audioReactiveBtn.textContent = 'Audio reactivo';
+      audioReactiveBtn.classList.remove('active');
+    }
+  });
+}
+
 const folderSelector = $('folder-selector');
 const folderGroup = $('folder-group');
 const btnOpenFolder = $('btn-open-folder');

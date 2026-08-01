@@ -212,6 +212,23 @@
     }
   }
 
+  // Concrete visual nouns only. Metaphors such as "fire" are intentionally absent so a
+  // romantic lyric does not become a desert merely because it says "arde mi corazon".
+  const WORLD_SIGNALS = Object.freeze({
+    forest: ['bosque', 'arbol', 'arboles', 'selva', 'forest', 'woods', 'jungle'],
+    mystic_garden: ['jardin', 'flores', 'flor', 'prado', 'garden', 'meadow', 'blossom'],
+    desert: ['desierto', 'arena', 'dunas', 'oasis', 'desert', 'sand', 'dunes'],
+    city: ['ciudad', 'calle', 'avenida', 'edificio', 'trafico', 'city', 'street', 'downtown'],
+    neon_city: ['neon', 'cyberpunk', 'discoteca', 'nightclub', 'sintetizador', 'synthwave'],
+    ocean: ['oceano', 'mar', 'playa', 'orilla', 'olas', 'ocean', 'sea', 'beach', 'shore'],
+    snow: ['nieve', 'hielo', 'invierno', 'tundra', 'snow', 'ice', 'winter'],
+    ruins: ['ruinas', 'templo', 'iglesia', 'cementerio', 'tumba', 'ruins', 'temple', 'grave'],
+    swamp: ['pantano', 'ciénaga', 'cienaga', 'marisma', 'swamp', 'marsh', 'bog'],
+    interior: ['habitacion', 'habitación', 'cuarto', 'casa', 'ventana', 'room', 'house', 'bedroom'],
+    void: ['espacio', 'cosmos', 'galaxia', 'universo', 'space', 'cosmos', 'galaxy', 'universe'],
+    mountain: ['montana', 'montaña', 'cumbre', 'acantilado', 'mountain', 'peak', 'cliff']
+  });
+
   class DictionaryAnalyzer extends ILyricAnalyzer {
     constructor() {
       super();
@@ -259,7 +276,52 @@
         });
       }
 
-      return { blocks };
+      return {
+        blocks,
+        richVision: this._buildLocalVision(blocks),
+        isAIAnalyzed: false,
+        analysisSource: 'local'
+      };
+    }
+
+    /** Build a deterministic visual hint locally; it never calls a model or network service. */
+    _buildLocalVision(blocks) {
+      const fullText = blocks.map(block => block.text || '').join(' ').toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, ' ');
+      let bestBiome = null;
+      let bestScore = 0;
+      for (const [biome, signals] of Object.entries(WORLD_SIGNALS)) {
+        const score = signals.reduce((total, signal) => total + (this._hasVisualSignal(fullText, signal) ? 1 : 0), 0);
+        if (score > bestScore) { bestBiome = biome; bestScore = score; }
+      }
+      const dominant = blocks.reduce((scores, block) => {
+        scores[block.emotion] = (scores[block.emotion] || 0) + (block.emotionScore || 0);
+        return scores;
+      }, {});
+      const emotion = Object.keys(dominant).sort((left, right) => dominant[right] - dominant[left])[0] || 'neutral';
+      const symbols = [...new Set(blocks.flatMap(block => block.keywords || []))].slice(0, 6);
+      const night = /\b(noche|luna|estrellas|night|moon|stars)\b/.test(fullText);
+      const winter = /\b(nieve|hielo|invierno|snow|ice|winter)\b/.test(fullText);
+      const lightingPreset = emotion === 'anger' || emotion === 'energy' ? 'dramatic'
+        : emotion === 'sad' || emotion === 'dark' ? 'moonlight'
+          : emotion === 'love' || emotion === 'celebration' ? 'golden_hour' : 'cold';
+      const cameraStyle = emotion === 'love' ? 'intimate_dolly'
+        : emotion === 'energy' || emotion === 'anger' ? 'kinetic'
+          : emotion === 'dark' || emotion === 'sad' ? 'still' : 'slow_follow';
+      return {
+        world: bestBiome ? { type: bestBiome, season: winter ? 'winter' : 'neutral', time: night ? 'night' : 'day' } : {},
+        camera: { style: cameraStyle },
+        lighting: { preset: lightingPreset },
+        symbols,
+        directorNotes: ['Vision generated locally from lyric imagery.'],
+        artStyle: bestBiome === 'neon_city' || bestBiome === 'ruins' ? 'gothic' : 'realistic'
+      };
+    }
+
+    _hasVisualSignal(text, signal) {
+      const normalized = signal.normalize('NFD').replace(/[\u0300-\u036f]/g, ' ');
+      const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp(`(^|[^a-z0-9])${escaped}(?=$|[^a-z0-9])`).test(text);
     }
 
     /**

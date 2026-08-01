@@ -97,10 +97,15 @@
      * @param {number} seed - Unique seed for this song (artist + title hash)
      * @returns {Object} SongVision
      */
-    conceiveVision(deepMeaning, narrativeResult, seed) {
+    conceiveVision(deepMeaning, narrativeResult, seed, richVision = null) {
       const primaryTheme = deepMeaning.primaryTheme || 'universal_contemplation';
-
       const profile = THEME_PROFILES[primaryTheme] || THEME_PROFILES.universal_contemplation;
+      const vision = richVision && typeof richVision === 'object' ? richVision : null;
+      const llmWorld = vision && vision.world || {};
+      const resolver = global.SceneBiomeLibrary;
+      const resolved = resolver ? resolver.resolve(llmWorld.type, primaryTheme) : { biome: { id: profile.worldConcept, terrain: profile.terrainType, sky: profile.sky }, source: 'profile' };
+      const biome = resolver ? resolver.applyModifiers(resolved.biome, llmWorld.season, llmWorld.time) : resolved.biome;
+      console.log(`[Vision] Biome "${biome.id}" (source: ${resolved.source}) for theme "${primaryTheme}"`);
 
       // The seed provides variation inside a semantic direction; it never chooses the story.
       const rng = (offset = 0) => {
@@ -132,21 +137,40 @@
         primaryTheme,
         deepThemes: deepMeaning.deepThemes || [],
         blockMotifs: deepMeaning.blockMotifs || [],
-        artStyle: profile.artStyle,
-        worldConcept: profile.worldConcept,
+        biome,
+        richVision: vision,
+        artStyle: this._validArtStyle(vision && vision.artStyle) || profile.artStyle,
+        cameraStyle: this._validCameraStyle(vision && vision.camera && vision.camera.style),
+        lightingPreset: this._validLightingPreset(vision && vision.lighting && vision.lighting.preset),
+        worldConcept: biome.id,
         composition: {
           type: profile.composition,
-          terrainType: profile.terrainType,
-          sky: profile.sky,
+          terrainType: biome.terrain,
+          sky: biome.sky,
           focalAxis: rng(10) > 0.5 ? 'left_to_right' : 'right_to_left',
-          baseIdentity: `${primaryTheme}:${profile.composition}`
+          baseIdentity: `${primaryTheme}:${biome.id}`
         },
-        persistentMotifs: [profile.motif],
+        persistentMotifs: vision && Array.isArray(vision.symbols) && vision.symbols.length ? vision.symbols.slice(0, 2) : [profile.motif],
         initialWorldState: { ...profile.state },
         worldEvolution: profile.evolution,
         cinematicIntent,
         cast
       };
+    }
+
+    _validCameraStyle(value) {
+      const allowed = ['slow_follow', 'intimate_dolly', 'orbit', 'crane', 'still', 'kinetic'];
+      return allowed.includes(value) ? value : null;
+    }
+
+    _validLightingPreset(value) {
+      const allowed = ['warm', 'cold', 'neon', 'dark', 'moonlight', 'sunrise', 'golden_hour', 'dramatic'];
+      return allowed.includes(value) ? value : null;
+    }
+
+    _validArtStyle(value) {
+      const allowed = ['realistic', 'anime', 'gothic'];
+      return allowed.includes(value) ? value : null;
     }
   }
 

@@ -20,17 +20,22 @@
       this.dispose();
       this.group = new THREE.Group();
       this._worldSpec = { ...worldSpec };
+      const biome = worldSpec.biome || {};
+      const ground = biome.ground || {};
 
       this.terrain = global.SceneTerrainGenerator.generate(this.scene, this.assets, {
-        type: worldSpec.terrainType || 'hills',
+        type: worldSpec.terrainType || biome.terrain || 'hills',
         composition: worldSpec.composition,
-        color: worldSpec.terrainColor || 0x122617,
+        color: ground.base != null ? ground.base : (worldSpec.terrainColor || 0x122617),
+        palette: ground,
         seed
       });
       this.group.add(this.terrain);
 
-      this.sky = global.SceneSkyGenerator.generate(this.scene, this.assets, { seed, sky: worldSpec.sky });
+      this.sky = global.SceneSkyGenerator.generate(this.scene, this.assets, { seed, sky: worldSpec.sky || biome.sky });
       this.group.add(this.sky);
+
+      if (biome.fog) this.scene.fog = new THREE.FogExp2(biome.fog.color, biome.fog.density);
 
       this.scene.add(this.group);
     }
