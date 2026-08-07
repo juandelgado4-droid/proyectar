@@ -1,5 +1,13 @@
-dist/
-release/
+# Excluir carpetas descomprimidas win-unpacked
+win-unpacked/
+**/win-unpacked/
+**/win-unpacked/**
+
+# Excluir archivos antiguos que superan el límite de 100MB de GitHub
+release/1.5.1/*.exe
+release/1.5.2/*.exe
+
+# Dependencias y logs
 node_modules/
 *.log
 builder-debug.yml
