@@ -41,6 +41,12 @@ let lastLyricScrollTime = 0;
 let lastMediaSnapshot = null;
 let currentSongMeta = { artist: '', title: '', cleanArtist: '', cleanTitle: '' };
 
+// ── Plantilla IA state ──────────────────────────────────────────
+let templateRenderer = null;
+let templateDNA = null;
+let templateLastMood = null;
+let templateLastLineIdx = -1;
+
 const SYNC_CORRECTION_THRESHOLD_MS = 400;
 const MEDIA_EVENT_LATENCY_CAP_MS = 600;
 const MANUAL_LYRIC_OFFSET_STEP_MS = 100;
@@ -71,6 +77,7 @@ function fullResize() {
   resizeCanvas();
   pts=[]; emb=[]; bbs=[]; gS=[];
   window._aStars = null;
+  if (templateRenderer) templateRenderer.resize();
   if (window.threeRenderer) {
     window.threeRenderer.setSize(window.innerWidth, window.innerHeight);
     if (window.threeCamera) {
@@ -456,8 +463,21 @@ if (syncResetBtn) {
   };
 }
 
-// Start the continuous rendering loop
-syncEngine.startSyncLoop();
+// Start the continuous rendering loop (with mood-breathing callback for Plantilla IA)
+syncEngine.startSyncLoop(function () {
+  if (!templateRenderer || currentBg !== 'plantilla-ia') return;
+  const lines = syncEngine.renderer.getLines();
+  const idx = syncEngine.renderer.getActiveLineIdx();
+  if (!lines || idx < 0 || idx === templateLastLineIdx) return;
+  templateLastLineIdx = idx;
+  const line = lines[idx];
+  if (!line || line.isInterlude) return;
+  const mood = AuroraTemplateDNA.moodOfLine(line.text);
+  if (mood && mood !== templateLastMood) {
+    templateLastMood = mood;
+    templateRenderer.setMood(mood);
+  }
+});
 updateSyncUI();
 
 if (window.electronAPI) {
@@ -500,7 +520,7 @@ async function handleMediaUpdate(data) {
 
     // Normal behavior: Change to a random background ONLY if we are not currently playing photos or videomusical
     if (currentBg !== 'fotos' && currentBg !== 'videomusical') {
-      const bgOptions = ['universo', 'escena-ia', 'flores', 'fuego', 'aurora', 'oceano', 'galaxia', 'vapor', 'magia', 'lluvia', 'nebulosa'];
+      const bgOptions = ['escena-ia', 'universo', 'estrellas', 'flores', 'fuego', 'aurora', 'oceano', 'galaxia', 'vapor', 'magia', 'lluvia', 'nebulosa'];
       let nextBg = currentBg;
       while(nextBg === currentBg && bgOptions.length > 1) {
         nextBg = bgOptions[Math.floor(Math.random() * bgOptions.length)];
@@ -578,13 +598,7 @@ function displayLyricsData(title, parseResult) {
   syncEngine.forceUpdate();
   console.log("Letra sincronizada mostrada (formato:", parseResult.format, "words:", parseResult.hasWordLevel, ")");
 
-  if (currentBg === 'escena-ia' && window.sceneEngine) {
-    if (typeof window.sceneEngine.loadSongAsync === 'function') {
-      window.sceneEngine.loadSongAsync(parseResult.lines, currentSongMeta);
-    } else {
-      window.sceneEngine.loadSong(parseResult.lines, currentSongMeta);
-    }
-  }
+  buildTemplateForCurrentSong();
 }
 
 function displayPlainLyrics(title, lyrics) {
@@ -709,29 +723,53 @@ async function prefetchArtistTracks(artist, currentTitle) {
 // �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
 bgSelector.addEventListener('change', () => switchBg(bgSelector.value));
 
+let audioContext = null;
+let audioAnalyser = null;
+let audioSource = null;
+let audioStream = null;
+let audioInterval = null;
+
 const audioReactiveBtn = $('audio-reactive-btn');
 if (audioReactiveBtn) {
   audioReactiveBtn.addEventListener('click', async () => {
-    const engine = window.sceneEngine;
-    if (!engine || !engine._initialized) {
-      alert('Activa primero el fondo "Escena IA".');
-      return;
-    }
-    const status = engine.getAudioReactiveStatus ? engine.getAudioReactiveStatus() : { enabled: false };
-    if (status.enabled) {
-      engine.disableAudioReactive();
+    if (audioStream) {
+      if (audioInterval) clearInterval(audioInterval);
+      audioStream.getTracks().forEach(t => t.stop());
+      audioStream = null;
+      if (audioContext) { try { await audioContext.close(); } catch {} audioContext = null; }
       audioReactiveBtn.textContent = 'Audio reactivo';
       audioReactiveBtn.classList.remove('active');
+      if (templateRenderer) templateRenderer.setAudio({ bass: 0, mid: 0, high: 0 });
       return;
     }
     try {
-      audioReactiveBtn.textContent = 'Elige audio...';
-      await engine.enableAudioReactive();
+      audioReactiveBtn.textContent = 'Escuchando...';
+      audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      audioAnalyser = audioContext.createAnalyser();
+      audioAnalyser.fftSize = 128;
+      audioSource = audioContext.createMediaStreamSource(audioStream);
+      audioSource.connect(audioAnalyser);
+
+      const dataArray = new Uint8Array(audioAnalyser.frequencyBinCount);
+      audioInterval = setInterval(() => {
+        if (!audioAnalyser || !templateRenderer) return;
+        audioAnalyser.getByteFrequencyData(dataArray);
+        let bSum = 0, mSum = 0, hSum = 0;
+        for (let i = 0; i <= 6; i++) bSum += dataArray[i] || 0;
+        for (let i = 7; i <= 24; i++) mSum += dataArray[i] || 0;
+        for (let i = 25; i < dataArray.length; i++) hSum += dataArray[i] || 0;
+        const bass = Math.min(1, (bSum / 7) / 200);
+        const mid = Math.min(1, (mSum / 18) / 180);
+        const high = Math.min(1, (hSum / (dataArray.length - 25)) / 160);
+        templateRenderer.setAudio({ bass, mid, high });
+      }, 33);
+
       audioReactiveBtn.textContent = 'Audio reactivo: ON';
       audioReactiveBtn.classList.add('active');
     } catch (error) {
-      console.warn('[Audio reactive]', error);
-      alert(error && error.message ? error.message : 'No se pudo activar el audio reactivo.');
+      console.warn('[Audio reactivo]', error);
+      alert('No se pudo activar el audio reactivo: ' + (error && error.message ? error.message : error));
       audioReactiveBtn.textContent = 'Audio reactivo';
       audioReactiveBtn.classList.remove('active');
     }
@@ -785,9 +823,9 @@ function switchBg(name) {
   currentBg = name;
   cancelAnimationFrame(animFrame);
   if (window._cancelThreeJS) window._cancelThreeJS();
+  stopTemplateBg();
   resetBgFrameClock();
   ctx.clearRect(0, 0, W, H);
-  // Clean up video overlays when switching away from fotos
   if (typeof ft_cleanupVideos === 'function') ft_cleanupVideos();
   
   if (name === 'fotos') {
@@ -802,7 +840,6 @@ function switchBg(name) {
   
   const webgl = $('webgl-canvas');
   const ytContainer = $('yt-bg-container');
-  
   if (ytContainer) {
     if (name === 'videomusical') {
       ytContainer.style.display = 'block';
@@ -817,123 +854,140 @@ function switchBg(name) {
   }
 
   if (name === 'universo') {
-    // Dispose scene engine if it was using the same canvas
-    if (window.sceneEngine && window.sceneEngine._initialized) {
-      window.sceneEngine.dispose();
-    }
     bgCanvas.style.display = 'none';
-    webgl.style.display = 'block';
+    if (webgl) webgl.style.display = 'block';
     loopUniverso3D();
-  } else if (name === 'escena-ia') {
-    // Universo may have claimed the WebGL context — force re-init of Three.js state
-    isThreeInitialized = false;
-    bgCanvas.style.display = 'none';
-    webgl.style.display = 'block';
-    if (!window.sceneEngine) {
-      window.sceneEngine = new window.SceneEngine($('webgl-canvas'));
-    }
-    window.sceneEngine.init();
-    const lines = syncEngine.renderer.getLines();
-    if (lines && lines.length > 0) {
-      if (typeof window.sceneEngine.loadSongAsync === 'function') {
-        window.sceneEngine.loadSongAsync(lines, currentSongMeta);
-      } else {
-        window.sceneEngine.loadSong(lines, currentSongMeta);
-      }
-    }
-    loopEscenaIA();
-  } else if (name !== 'videomusical') {
-    // Dispose scene engine if switching to a 2D background
-    if (window.sceneEngine && window.sceneEngine._initialized) {
-      window.sceneEngine.dispose();
-    }
+  } else if (name === 'escena-ia' || name === 'plantilla-ia') {
     bgCanvas.style.display = 'block';
-    webgl.style.display = 'none';
+    if (webgl) webgl.style.display = 'none';
+    startTemplateBg();
+  } else if (name !== 'videomusical') {
+    bgCanvas.style.display = 'block';
+    if (webgl) webgl.style.display = 'none';
     const bgs = {
-      flores: loopFlores, fuego: loopFuego, aurora: loopAurora, oceano: loopOceano, galaxia: loopGalaxia,
-      vapor: loopVapor, magia: loopMagia, lluvia: loopLluvia, nebulosa: loopNebulosa, fotos: loopFotos
+      estrellas: loopEstrellas, flores: loopFlores, fuego: loopFuego, aurora: loopAurora,
+      oceano: loopOceano, galaxia: loopGalaxia, vapor: loopVapor, magia: loopMagia,
+      lluvia: loopLluvia, nebulosa: loopNebulosa, fotos: loopFotos
     };
     if (bgs[name]) bgs[name]();
   }
 }
 
-function loopEscenaIA(now) {
-  if (currentBg !== 'escena-ia') return;
+// ── PLANTILLA IA (Fondos 2D generados por la canción) ─────────
+function ensureTemplateRenderer() {
+  if (!templateRenderer) templateRenderer = new AuroraTemplateRenderer(bgCanvas);
+  return templateRenderer;
+}
+
+function buildTemplateForCurrentSong() {
+  const lines = syncEngine.renderer.getLines();
+  const lyricsText = lines
+    ? lines.filter(l => !l.isInterlude).map(l => l.text).join(' ')
+    : (lyricsContent ? lyricsContent.innerText : '');
+
+  templateDNA = AuroraTemplateDNA.fromSong(lyricsText, {
+    artist: currentSongMeta.cleanArtist,
+    title: currentSongMeta.cleanTitle
+  });
+
+  templateLastMood = templateDNA.mood;
+  templateLastLineIdx = -1;
+  console.log('[Escena IA 2D]', templateDNA.name, '· escenario:', templateDNA.scene, '· mood:', templateDNA.mood);
+
+  if (currentBg === 'escena-ia' || currentBg === 'plantilla-ia') {
+    const renderer = ensureTemplateRenderer();
+    renderer.setDNA(templateDNA);
+    renderer.start();
+  }
+}
+
+function startTemplateBg() {
+  if (!templateDNA) buildTemplateForCurrentSong();
+  const renderer = ensureTemplateRenderer();
+  renderer.setDNA(templateDNA || AuroraTemplateDNA.fromSong('', {}));
+  renderer.start();
+}
+
+function stopTemplateBg() {
+  if (templateRenderer) templateRenderer.stop();
+}
+
+// ── ESTRELLAS 2D (Estrellas + Nebulosa Cósmica) ─────────────────
+let uv_stars = [], uv_time = 0;
+function loopEstrellas(now) {
   if (!shouldDrawBgFrame(now)) {
-    window._sceneIAFrame = requestAnimationFrame(loopEscenaIA);
+    animFrame = requestAnimationFrame(loopEstrellas);
     return;
   }
-  if (window.sceneEngine) {
-    window.sceneEngine.update(syncEngine.clock.getPosition());
-  }
-  window._sceneIAFrame = requestAnimationFrame(loopEscenaIA);
-}
-const origCancelThree = window._cancelThreeJS;
-window._cancelThreeJS = () => {
-  if (origCancelThree) origCancelThree();
-  cancelAnimationFrame(window._sceneIAFrame);
-};
-
-//    YOUTUBE VIDEO BACKGROUND   
-let yt_currentSearch = '';
-
-async function yt_loadVideo(artist, title) {
-  if (!window.electronAPI || !window.electronAPI.searchYoutube) return;
-  const searchKey = `${artist}|${title}`;
-  if (yt_currentSearch === searchKey) return; // Ya estamos mostrando/buscando este
-  yt_currentSearch = searchKey;
-
-  const webview = $('yt-bg-webview');
-  const loading = $('yt-bg-loading');
-  if (!webview || !loading) return;
-
-  // Reset y mostrar loading
-  webview.classList.remove('loaded');
-  webview.src = 'about:blank';
-  loading.classList.remove('hidden');
-
-  try {
-    const videoId = await window.electronAPI.searchYoutube(artist, title);
-    // Verificar si mientras buscábamos, cambió la canción
-    if (yt_currentSearch !== searchKey) return;
-
-    if (videoId) {
-      webview.src = `https://www.youtube.com/watch?v=${videoId}&autoplay=1`;
-
-      webview.addEventListener('did-finish-load', () => {
-        webview.insertCSS(`
-          #secondary, #below, #masthead-container,
-          ytd-comments, #related, #chat { display: none !important; }
-          #primary { max-width: 100vw !important; }
-          video { width: 100vw !important; height: 100vh !important; object-fit: contain; }
-          body { cursor: none !important; }
-          ::-webkit-scrollbar { display: none; }
-        `);
+  uv_time += 0.005;
+  if (uv_stars.length === 0) {
+    for (let i = 0; i < 450; i++) {
+      uv_stars.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: 0.5 + Math.random() * 2.2,
+        alpha: 0.2 + Math.random() * 0.8,
+        twinkle: Math.random() * Math.PI * 2,
+        speed: 0.02 + Math.random() * 0.04,
+        color: ['#ffffff', '#e9d5ff', '#c084fc', '#93c5fd', '#fde047'][Math.floor(Math.random() * 5)]
       });
-
-      setTimeout(() => {
-        if (yt_currentSearch === searchKey) {
-          loading.classList.add('hidden');
-          webview.classList.add('loaded');
-        }
-      }, 1500);
-    } else {
-      loading.querySelector('span').textContent = 'Video no encontrado';
-    }
-  } catch (e) {
-    if (yt_currentSearch === searchKey) {
-      loading.querySelector('span').textContent = 'Error al buscar video';
     }
   }
+
+  ctx.fillStyle = '#06030c';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  const cx = W * 0.5 + Math.sin(uv_time * 0.2) * 50;
+  const cy = H * 0.45 + Math.cos(uv_time * 0.15) * 30;
+  const rad = Math.max(W, H) * 0.55;
+
+  const g1 = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+  g1.addColorStop(0, 'rgba(147, 51, 234, 0.28)');
+  g1.addColorStop(0.4, 'rgba(59, 130, 246, 0.14)');
+  g1.addColorStop(0.8, 'rgba(15, 23, 42, 0.04)');
+  g1.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = g1;
+  ctx.fillRect(0, 0, W, H);
+
+  const cx2 = W * 0.3 + Math.cos(uv_time * 0.1) * 60;
+  const cy2 = H * 0.6 + Math.sin(uv_time * 0.12) * 40;
+  const g2 = ctx.createRadialGradient(cx2, cy2, 0, cx2, cy2, rad * 0.7);
+  g2.addColorStop(0, 'rgba(236, 72, 153, 0.18)');
+  g2.addColorStop(0.5, 'rgba(99, 102, 241, 0.08)');
+  g2.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = g2;
+  ctx.fillRect(0, 0, W, H);
+
+  for (const s of uv_stars) {
+    s.twinkle += s.speed;
+    const flicker = 0.5 + 0.5 * Math.sin(s.twinkle);
+    ctx.fillStyle = s.color;
+    ctx.globalAlpha = s.alpha * flicker;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r * (0.8 + flicker * 0.4), 0, Math.PI * 2);
+    ctx.fill();
+    if (s.r > 1.8) {
+      ctx.globalAlpha = s.alpha * flicker * 0.3;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+  ctx.globalCompositeOperation = 'source-over';
+  animFrame = requestAnimationFrame(loopEstrellas);
 }
 
-// ���� UNIVERSO 3D (THREE.JS) ����
+// ── UNIVERSO 3D (THREE.JS) ─────────────────────────────────────
 let threeScene, threeCore, threeGlow, threeRing1, threeRing2, threeTextGroup;
 let threeTime = 0, threeTargetDist = 280, threeCurrentDist = 280, threeRotX = 0.2, threeRotY = 0;
 let isThreeInitialized = false;
 
 function initThreeJS() {
   const canvas = $('webgl-canvas');
+  if (!window.THREE || !canvas) return;
   window.threeRenderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   window.threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
   window.threeRenderer.setSize(window.innerWidth, window.innerHeight);
@@ -953,7 +1007,7 @@ function initThreeJS() {
     pos[3 * i + 1] = d * Math.cos(phi);
     pos[3 * i + 2] = d * Math.sin(phi) * Math.sin(theta);
   }
-  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   threeScene.add(new THREE.Points(geo, new THREE.PointsMaterial({ size: 1.5, color: 0xffffff })));
 
   // Core
@@ -964,39 +1018,39 @@ function initThreeJS() {
   threeScene.add(threeCore);
   
   // Center Logo
-  const ctCanvas = document.createElement("canvas");
+  const ctCanvas = document.createElement('canvas');
   ctCanvas.width = 512; ctCanvas.height = 512;
-  const tCtx = ctCanvas.getContext("2d");
-  tCtx.font = "bold 80px Inter"; tCtx.textAlign = "center"; tCtx.textBaseline = "middle";
-  tCtx.fillStyle = "#a855f7"; tCtx.shadowColor = "#c084fc"; tCtx.shadowBlur = 30;
-  tCtx.fillText("CM", 256, 256);
+  const tCtx = ctCanvas.getContext('2d');
+  tCtx.font = 'bold 80px Inter'; tCtx.textAlign = 'center'; tCtx.textBaseline = 'middle';
+  tCtx.fillStyle = '#a855f7'; tCtx.shadowColor = '#c084fc'; tCtx.shadowBlur = 30;
+  tCtx.fillText('CM', 256, 256);
   const centerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(ctCanvas), transparent: true }));
   centerSprite.scale.set(70, 70, 1);
   threeScene.add(centerSprite);
 
   // Glow
-  const gCanvas = document.createElement("canvas");
+  const gCanvas = document.createElement('canvas');
   gCanvas.width = gCanvas.height = 768;
-  const gCtx = gCanvas.getContext("2d");
+  const gCtx = gCanvas.getContext('2d');
   const grad = gCtx.createRadialGradient(384, 384, 38.4, 384, 384, 384);
-  grad.addColorStop(0, "rgba(168,85,247,0.4)");
-  grad.addColorStop(0.5, "rgba(88,28,135,0.15)");
-  grad.addColorStop(1, "rgba(0,0,0,0)");
+  grad.addColorStop(0, 'rgba(168,85,247,0.4)');
+  grad.addColorStop(0.5, 'rgba(88,28,135,0.15)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
   gCtx.fillStyle = grad; gCtx.fillRect(0, 0, 768, 768);
   threeGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(gCanvas), transparent: true, depthWrite: false }));
   threeGlow.scale.set(600, 600, 1);
   threeScene.add(threeGlow);
 
   // Rings
-  const rCanvas = document.createElement("canvas");
+  const rCanvas = document.createElement('canvas');
   rCanvas.width = rCanvas.height = 768;
-  const rCtx = rCanvas.getContext("2d");
+  const rCtx = rCanvas.getContext('2d');
   rCtx.translate(384, 384);
   const rGrad = rCtx.createRadialGradient(0, 0, 78, 0, 0, 376);
-  rGrad.addColorStop(0, "rgba(233,213,255,0.5)");
-  rGrad.addColorStop(0.3, "rgba(168,85,247,0.3)");
-  rGrad.addColorStop(0.65, "rgba(88,28,135,0.15)");
-  rGrad.addColorStop(1, "rgba(0,0,0,0)");
+  rGrad.addColorStop(0, 'rgba(233,213,255,0.5)');
+  rGrad.addColorStop(0.3, 'rgba(168,85,247,0.3)');
+  rGrad.addColorStop(0.65, 'rgba(88,28,135,0.15)');
+  rGrad.addColorStop(1, 'rgba(0,0,0,0)');
   rCtx.fillStyle = rGrad;
   rCtx.beginPath(); rCtx.arc(0, 0, 376, 0, 2 * Math.PI); rCtx.arc(0, 0, 261, 0, 2 * Math.PI, true);
   rCtx.fill();
@@ -1010,17 +1064,17 @@ function initThreeJS() {
   threeTextGroup = new THREE.Group();
   threeScene.add(threeTextGroup);
   
-  const words = ["Cafe", "Musica", "Arte", "Letras", "Miedo", "Magia", "Noche", "Pasion"];
-  const colors = ["#e9d5ff", "#c084fc", "#a855f7", "#7e22ce", "#f3e8ff", "#d8b4fe"];
+  const words = ['Cafe', 'Musica', 'Arte', 'Letras', 'Miedo', 'Magia', 'Noche', 'Pasion'];
+  const colors = ['#e9d5ff', '#c084fc', '#a855f7', '#7e22ce', '#f3e8ff', '#d8b4fe'];
   
-  for(let i=0; i<24; i++) {
-    const w = words[Math.floor(Math.random()*words.length)];
-    const c = colors[Math.floor(Math.random()*colors.length)];
-    const tw = document.createElement("canvas");
+  for (let i = 0; i < 24; i++) {
+    const w = words[Math.floor(Math.random() * words.length)];
+    const c = colors[Math.floor(Math.random() * colors.length)];
+    const tw = document.createElement('canvas');
     tw.width = 256; tw.height = 64;
-    const tctx = tw.getContext("2d");
-    tctx.font = "bold 34px Inter"; tctx.textAlign = "center"; tctx.textBaseline = "middle";
-    tctx.fillStyle = "#fff"; tctx.shadowColor = c; tctx.shadowBlur = 15;
+    const tctx = tw.getContext('2d');
+    tctx.font = 'bold 34px Inter'; tctx.textAlign = 'center'; tctx.textBaseline = 'middle';
+    tctx.fillStyle = '#fff'; tctx.shadowColor = c; tctx.shadowBlur = 15;
     tctx.fillText(w, 128, 32);
     const tsprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(tw), transparent: true }));
     tsprite.scale.set(35, 8.75, 1);
@@ -1042,38 +1096,44 @@ function loopUniverso3D(now) {
   }
   
   threeTime += 0.01;
-  threeRing1.rotation.z += 0.002;
-  threeRing2.rotation.z -= 0.0015;
+  if (threeRing1) threeRing1.rotation.z += 0.002;
+  if (threeRing2) threeRing2.rotation.z -= 0.0015;
   const gs = 1 + 0.03 * Math.sin(0.4 * threeTime);
-  threeGlow.scale.set(gs*600, gs*600, 1);
+  if (threeGlow) threeGlow.scale.set(gs * 600, gs * 600, 1);
   const cs = 1 + 0.05 * Math.sin(3 * threeTime);
-  threeCore.scale.set(cs, cs, cs);
+  if (threeCore) threeCore.scale.set(cs, cs, cs);
   
-  threeTextGroup.children.forEach(s => {
-    s.material.opacity = 0.5 + 0.25 * Math.sin(2 * threeTime);
-    s.userData.theta += s.userData.speed;
-    s.position.set(
-      s.userData.r * Math.sin(s.userData.phi) * Math.cos(s.userData.theta),
-      s.userData.r * Math.cos(s.userData.phi),
-      s.userData.r * Math.sin(s.userData.phi) * Math.sin(s.userData.theta)
-    );
-  });
+  if (threeTextGroup) {
+    threeTextGroup.children.forEach(s => {
+      s.material.opacity = 0.5 + 0.25 * Math.sin(2 * threeTime);
+      s.userData.theta += s.userData.speed;
+      s.position.set(
+        s.userData.r * Math.sin(s.userData.phi) * Math.cos(s.userData.theta),
+        s.userData.r * Math.cos(s.userData.phi),
+        s.userData.r * Math.sin(s.userData.phi) * Math.sin(s.userData.theta)
+      );
+    });
+  }
   
-  // Auto rotate camera slowly
   threeRotY -= 0.001;
-  
   threeCurrentDist += 0.06 * (threeTargetDist - threeCurrentDist);
-  window.threeCamera.position.set(
-    threeCurrentDist * Math.sin(threeRotY) * Math.cos(threeRotX),
-    threeCurrentDist * Math.sin(threeRotX),
-    threeCurrentDist * Math.cos(threeRotY) * Math.cos(threeRotX)
-  );
-  window.threeCamera.lookAt(0,0,0);
+  if (window.threeCamera) {
+    window.threeCamera.position.set(
+      threeCurrentDist * Math.sin(threeRotY) * Math.cos(threeRotX),
+      threeCurrentDist * Math.sin(threeRotX),
+      threeCurrentDist * Math.cos(threeRotY) * Math.cos(threeRotX)
+    );
+    window.threeCamera.lookAt(0, 0, 0);
+  }
   
-  window.threeRenderer.render(threeScene, window.threeCamera);
+  if (window.threeRenderer && threeScene && window.threeCamera) {
+    window.threeRenderer.render(threeScene, window.threeCamera);
+  }
   window._threeAnimFrame = requestAnimationFrame(loopUniverso3D);
 }
-window._cancelThreeJS = () => cancelAnimationFrame(window._threeAnimFrame);
+window._cancelThreeJS = () => {
+  if (window._threeAnimFrame) cancelAnimationFrame(window._threeAnimFrame);
+};
 
 // ���� FLORES PREMIUM (SAKURA / CHERRY BLOSSOMS) ����
 let f_petals = [], f_time = 0;

@@ -22,7 +22,7 @@
     </div>
   </div>
 
-  <!-- Background Canvas -->
+  <!-- Background Canvases (2D & 3D WebGL) -->
   <canvas id="bg-canvas"></canvas>
   <canvas id="webgl-canvas"></canvas>
 
@@ -35,80 +35,12 @@
     </div>
   </div>
 
+  <!-- Vendor 3D Engine for Universo -->
   <script src="assets/vendor/three.min.js"></script>
-  <script src="scene-engine/world/BiomeLibrary.js"></script>
 
-  <!-- Scene Engine v7 Cognitive Pipeline modules -->
-  <script src="scene-engine/EventBus.js"></script>
-  <script src="scene-engine/Timeline.js"></script>
-  <script src="scene-engine/assets/AssetLibrary.js"></script>
-
-  <!-- Analysis & Meaning -->
-  <script src="scene-engine/analysis/ILyricAnalyzer.js"></script>
-  <script src="scene-engine/analysis/VisualLexicon.js"></script>
-  <script src="scene-engine/analysis/DictionaryAnalyzer.js"></script>
-  <script src="scene-engine/analysis/Gemma3LyricCache.js"></script>
-  <script src="scene-engine/analysis/Gemma3SchemaValidator.js"></script>
-  <script src="scene-engine/analysis/Gemma3LyricAnalyzer.js"></script>
-  <script src="scene-engine/analysis/Gemma3ModelManager.js"></script>
-  <script src="scene-engine/analysis/NarrativeAnalyzer.js"></script>
-  <script src="scene-engine/analysis/MeaningEngine.js"></script>
-
-  <!-- Director, Memory & Cognitive Layer -->
-  <script src="scene-engine/director/NarrativeMemory.js"></script>
-  <script src="scene-engine/director/VisualImaginationEngine.js"></script>
-  <script src="scene-engine/director/BeatEngine.js"></script>
-  <script src="scene-engine/director/SceneDirector.js"></script>
-  <script src="scene-engine/director/VisualCritic.js"></script>
-
-  <!-- Rules, Physics & Reasoning -->
-  <script src="scene-engine/rules/PriorityMixer.js"></script>
-  <script src="scene-engine/rules/EmotionPhysics.js"></script>
-  <script src="scene-engine/rules/SymbolEcology.js"></script>
-  <script src="scene-engine/rules/StyleEngine.js"></script>
-  <script src="scene-engine/rules/VisualReasoner.js"></script>
-
-  <!-- Camera & Characters -->
-  <script src="scene-engine/camera/CinematographyLibrary.js"></script>
-  <script src="scene-engine/camera/CameraDirector.js"></script>
-  <script src="scene-engine/characters/Character.js"></script>
-  <script src="scene-engine/characters/SkeletonCharacter.js"></script>
-  <script src="scene-engine/characters/HumanCharacter.js"></script>
-  <script src="scene-engine/characters/RobotCharacter.js"></script>
-  <script src="scene-engine/characters/AnimalCharacter.js"></script>
-
-  <!-- Particles, Lighting & Weather -->
-  <script src="scene-engine/particles/ParticlePool.js"></script>
-  <script src="scene-engine/particles/HeartParticles.js"></script>
-  <script src="scene-engine/particles/PetalParticles.js"></script>
-  <script src="scene-engine/particles/RainParticles.js"></script>
-  <script src="scene-engine/particles/SnowParticles.js"></script>
-  <script src="scene-engine/particles/FireworkParticles.js"></script>
-  <script src="scene-engine/particles/ConfettiParticles.js"></script>
-  <script src="scene-engine/particles/EmberParticles.js"></script>
-  <script src="scene-engine/particles/NeonParticles.js"></script>
-  <script src="scene-engine/particles/DustParticles.js"></script>
-  <script src="scene-engine/lighting/LightingManager.js"></script>
-  <script src="scene-engine/weather/WeatherSystem.js"></script>
-
-  <!-- Procedural Generators -->
-  <script src="scene-engine/generators/TerrainGenerator.js"></script>
-  <script src="scene-engine/generators/VegetationGenerator.js"></script>
-  <script src="scene-engine/generators/ArchitectureGenerator.js"></script>
-  <script src="scene-engine/generators/SkyGenerator.js"></script>
-  <script src="scene-engine/generators/PropGenerator.js"></script>
-  <script src="scene-engine/generators/ScatterGenerator.js"></script>
-
-  <!-- Composers -->
-  <script src="scene-engine/composers/WorldComposer.js"></script>
-  <script src="scene-engine/composers/StageComposer.js"></script>
-  <script src="scene-engine/composers/CharacterComposer.js"></script>
-  <script src="scene-engine/composers/FXComposer.js"></script>
-  <script src="scene-engine/SceneComposer.js"></script>
-
-  <!-- Renderer & Facade -->
-  <script src="scene-engine/renderer/SceneRenderer.js"></script>
-  <script src="scene-engine/SceneEngine.js"></script>
+  <!-- Template Engine IA (Fondos 2D generados por la letra de la canción) -->
+  <script src="scene-engine/templates/TemplateDNA.js"></script>
+  <script src="scene-engine/templates/TemplateRenderer.js"></script>
 
   <!-- Watermark Logo (hover para cambiar) -->
   <div id="watermark-wrapper" title="Haz clic para cambiar el logo">
@@ -123,10 +55,8 @@
     </button>
   </div>
 
-
   <!-- Toast: Logo cambiado exitosamente -->
   <div id="logo-changed-toast">✅ Logo actualizado</div>
-
 
   <!-- Now Playing -->
   <div class="now-playing" id="now-playing">
@@ -159,8 +89,9 @@
     <div class="ctrl-group">
       <label>Fondo:</label>
       <select id="bg-selector">
+        <option value="escena-ia">🪄 Escena IA (Generativa)</option>
         <option value="universo">🌌 Universo</option>
-        <option value="escena-ia">🎬 Escena IA</option>
+        <option value="estrellas">✨ Estrellas</option>
         <option value="flores">🌸 Flores</option>
         <option value="fuego">🔥 Fuego</option>
         <option value="aurora">✨ Aurora</option>
@@ -212,7 +143,7 @@
       <button class="ctrl-btn" id="vid-play-btn" title="Reproducir Videos" style="font-size:1rem;">🎬</button>
     </div>
     <button class="ctrl-btn" id="fullscreen-btn" title="Pantalla Completa" style="margin-left:10px;">🔲</button>
-    <button class="ctrl-btn" id="audio-reactive-btn" title="Captura de audio opcional para que la escena reaccione al ritmo">Audio reactivo</button>
+    <button class="ctrl-btn" id="audio-reactive-btn" title="Captura de audio para que la plantilla reaccione al ritmo">Audio reactivo</button>
     <button class="ctrl-btn" id="manual-lyrics-btn" title="Editar letra manual" style="margin-left:10px;">✎</button>
     <button class="ctrl-btn" id="hide-btn" title="Ocultar controles (doble clic para restaurar)" style="margin-left:10px;">🔽</button>
   </div>

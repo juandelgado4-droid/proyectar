@@ -1,6 +1,6 @@
 {
   "name": "aurora-letras",
-  "version": "1.5.3",
+  "version": "1.5.6",
   "description": "Proyector de letras sincronizadas con visuales",
   "main": "main.js",
   "repository": {
